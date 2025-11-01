@@ -345,6 +345,41 @@ declare namespace State {
     }
   }
 
+  interface PerunSignMessageRequest {
+    pubkey: {
+      data: Uint8Array
+    }
+    data: {
+      data: Uint8Array
+    }
+  }
+
+  interface PerunSignTransactionRequest {
+    identifier: CKBComponents.Script
+    transaction: CKBComponents.Transaction
+  }
+
+  interface PerunRequest {
+    type: 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
+    request?: PerunSignMessageRequest | PerunSignTransactionRequest
+    timestamp: number
+  }
+
+  interface PerunChannel {
+    channelId: string
+    allocation: object
+    data: object
+    isFinal: boolean
+    version: string
+    createdAt: string
+    updatedAt: string
+  }
+
+  interface Perun {
+    channels: PerunChannel[]
+    requests: PerunRequest[]
+  }
+
   interface AppWithNeuronWallet {
     app: App
     chain: Chain
@@ -355,6 +390,7 @@ declare namespace State {
     sUDTAccounts: SUDTAccount[]
     experimental: Experimental | null
     consumeCells?: { outPoint: OutPoint; capacity: string }[]
+    perun: Perun
   }
 
   enum LockScriptCategory {

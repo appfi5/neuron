@@ -22,6 +22,8 @@ import SyncProgress from './entities/sync-progress'
 import TxLock from './entities/tx-lock'
 import CellLocalInfo from './entities/cell-local-info'
 import AmendTransaction from './entities/amend-transaction'
+import PerunChannel from './entities/perun-channel'
+import PerunActivity from './entities/perun-activity'
 
 import { InitMigration1566959757554 } from './migrations/1566959757554-InitMigration'
 import { AddTypeAndHasData1567144517514 } from './migrations/1567144517514-AddTypeAndHasData'
@@ -71,6 +73,8 @@ import AssetAccountSubscribe from './subscriber/asset-account-subscriber'
 import { AddStartBlockNumber1716539079505 } from './migrations/1716539079505-AddStartBlockNumber'
 import { AddUdtType1720089814860 } from './migrations/1720089814860-AddUdtType'
 import { AddLockCodeHash1744960856059, checkLockCodeHash } from './migrations/1744960856059-AddLockCodeHash'
+import { PerunChannel1752560937986 } from './migrations/1752560937986-PerunChannel'
+import { PerunActivity1752560937986 } from './migrations/1752560937986-PerunActivity'
 
 export const CONNECTION_NOT_FOUND_NAME = 'ConnectionNotFoundError'
 export type ConnectionName = 'light' | 'full'
@@ -145,6 +149,8 @@ const getConnectionOptions = (genesisBlockHash: string, connectionName: Connecti
       TxLock,
       CellLocalInfo,
       AmendTransaction,
+      PerunChannel,
+      PerunActivity,
     ],
     migrations: [
       InitMigration1566959757554,
@@ -190,6 +196,8 @@ const getConnectionOptions = (genesisBlockHash: string, connectionName: Connecti
       AmendTransaction1709008125088,
       AddStartBlockNumber1716539079505,
       AddUdtType1720089814860,
+      PerunChannel1752560937986,
+      PerunActivity1752560937986,
     ],
     subscribers: [
       AddressSubscribe,

@@ -8,6 +8,7 @@ import {
   updateWalletList,
   updateAddressListAndBalance,
   initAppState,
+  initPerunState,
   showGlobalAlertDialog,
   updateLockWindowInfo,
   dismissGlobalAlertDialog,
@@ -107,6 +108,7 @@ export const useOnCurrentWalletChange = ({
 }) => {
   useEffect(() => {
     initAppState()(dispatch, navigate)
+    initPerunState()(dispatch)
   }, [walletID, dispatch])
 }
 

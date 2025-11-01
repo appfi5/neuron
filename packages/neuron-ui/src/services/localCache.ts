@@ -14,6 +14,7 @@ export enum LocalCacheKey {
   ScreenAwake = 'ScreenAwake',
   RetryUnlockWindowInfo = 'RetryUnlockWindowInfo',
   RemindRegenerateMultisigAddress = 'RemindRegenerateMultisigAddress',
+  PerunRequests = 'perunRequests',
 }
 
 export const addresses = {
@@ -81,6 +82,30 @@ export const wallets = {
         throw new TypeError(`Wallets should be type of WalletIdentity[]`)
       }
       return walletList
+    } catch (err) {
+      console.error(err)
+      return []
+    }
+  },
+}
+
+export const perunRequests = {
+  save: (requestList: State.PerunRequest[]) => {
+    if (!Array.isArray(requestList)) {
+      return false
+    }
+    const requestsStr = JSON.stringify(requestList)
+    window.localStorage.setItem(LocalCacheKey.PerunRequests, requestsStr)
+    return true
+  },
+  load: () => {
+    const requestsStr = window.localStorage.getItem(LocalCacheKey.PerunRequests) || `[]`
+    try {
+      const requestList = JSON.parse(requestsStr)
+      if (!Array.isArray(requestList)) {
+        throw new TypeError(`Perun requests should be type of PerunRequest[]`)
+      }
+      return requestList
     } catch (err) {
       console.error(err)
       return []

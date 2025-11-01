@@ -31,5 +31,6 @@ export * from './calculateUsedCapacity'
 export * from './outPointTransform'
 export * from './scriptAndAddress'
 export * from './wakeScreen'
+export * from './paymentChannel'
 
 export { CONSTANTS }

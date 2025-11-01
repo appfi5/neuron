@@ -71,4 +71,8 @@ declare namespace Subject {
     type: 'success' | 'failed' | 'warning'
     action?: 'ok' | 'cancel'
   }
+
+  type PerunRequest = State.PerunRequest
+
+  type PerunChannel = State.PerunChannel
 }

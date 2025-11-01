@@ -2,7 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, NavLink, useNavigate } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
-import { NeuronWalletActions, showGlobalAlertDialog, useDispatch, useState as useGlobalState } from 'states'
+import {
+  NeuronWalletActions,
+  PaymentChannelActions,
+  showGlobalAlertDialog,
+  useDispatch,
+  useState as useGlobalState,
+} from 'states'
 import {
   VerifyExternalCkbNodeRes,
   checkForUpdates,
@@ -10,12 +16,18 @@ import {
   openExternal,
   verifyExternalCkbNode,
 } from 'services/remote'
-import { AppUpdater as AppUpdaterSubject } from 'services/subjects'
+import {
+  AppUpdater as AppUpdaterSubject,
+  PerunRequest as PerunRequestSubject,
+  PerunChannel as PerunChannelSubject,
+} from 'services/subjects'
+
 import Badge from 'widgets/Badge'
 import Logo from 'widgets/Icons/Logo.png'
 import { Overview, History, NervosDAO, Settings, Experimental, MenuExpand, ArrowNext } from 'widgets/Icons/icon'
 import { RoutePath, clsx, isSuccessResponse } from 'utils'
 import Tooltip from 'widgets/Tooltip'
+import { addPerunRequest } from 'states/stateProvider/actionCreators'
 import styles from './navbar.module.scss'
 
 export const FULL_SCREENS = [`/wizard/`, `/keystore/`, RoutePath.ImportHardware]
@@ -33,6 +45,8 @@ const menuItems = [
     children: [
       { name: 'navbar.special-assets', key: RoutePath.SpecialAssets, url: RoutePath.SpecialAssets },
       { name: 'navbar.s-udt', key: RoutePath.SUDTAccountList, url: RoutePath.SUDTAccountList },
+      { name: 'navbar.payment-channel', key: RoutePath.PaymentChannel, url: RoutePath.PaymentChannel },
+      { name: 'navbar.perun', key: RoutePath.Perun, url: RoutePath.Perun },
     ],
   },
 ]
@@ -83,8 +97,18 @@ const Navbar = () => {
     }
     const appUpdaterSubscription = AppUpdaterSubject.subscribe(onAppUpdaterUpdates)
 
+    const perunRequestSubscription = PerunRequestSubject.subscribe(payload => {
+      addPerunRequest(payload)(dispatch)
+    })
+
+    const perunChannelSubscription = PerunChannelSubject.subscribe((payload: Subject.PerunChannel[]) => {
+      dispatch({ type: PaymentChannelActions.UpdatePerunChannel, payload })
+    })
+
     return () => {
       appUpdaterSubscription.unsubscribe()
+      perunRequestSubscription.unsubscribe()
+      perunChannelSubscription.unsubscribe()
     }
   }, [dispatch])
 
