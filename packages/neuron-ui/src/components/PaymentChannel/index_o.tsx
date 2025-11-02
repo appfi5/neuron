@@ -42,6 +42,7 @@ import { PasswordDialog } from 'components/SignAndVerify'
 import { State } from '@ckb-connect/perun-wallet-wrapper/dist/wire'
 import TextField from 'widgets/TextField'
 import styles from './perun.module.scss'
+import PaymentChannelDemo from './demo'
 
 const Perun = () => {
   const { wallet } = useGlobalState()
@@ -49,14 +50,14 @@ const Perun = () => {
   const [amount, setAmount] = useState<number>(100)
   const [updateAmount, setUpdateAmount] = useState<number>(100)
   const [peerAddress, setPeerAddress] = useState(
-    'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsq2jyhhmdq7ujffqla0n3jtt6l0yy0hflycvakuds'
+    'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqd4a33y7unx66rqh03vwngh3e4t0x6yrhcd9sfns'
   )
-  const peerPubKey = '0x0260065151b232cb34bcd62447b46c3683480e4de1ce95b63212187a1ff36cc0da'
+  const peerPubKey = '0x02a5b7bb6196db5edcd38c55de70ae61d4bc52cd8b1195cfa6278ca43c11a35ab3'
   const [peerAmount, setPeerAmount] = useState<number>(100)
   const [challengeDuration, setChallengeDuration] = useState<number>(10000)
   const [validInputs, setValidInputs] = useState(false)
   const [channels] = useState(new Map<string, State>())
-  const [showRejectionModal, setShowRejectionModal] = useState(true)
+  const [showRejectionModal, setShowRejectionModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [updateChannelDialog, setUpdateChannelDialog] = useState(false)
   const [channelID, setChannelID] = useState<Uint8Array>()
@@ -554,6 +555,7 @@ const Perun = () => {
         </div>
       }
     >
+      <PaymentChannelDemo />
       <div className={styles.header}>
         <div className={styles.daoContainer}>
           <Dialog show={showPrompt} showFooter={false}>
