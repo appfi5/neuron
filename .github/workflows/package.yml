@@ -108,6 +108,7 @@ jobs:
           echo "LOG_ENCRYPTION_PUBLIC_KEY=${{ secrets.LOG_ENCRYPTION_PUBLIC_KEY }}" >> packages/neuron-wallet/.env
 
       - name: Package for MacOS
+        timeout-minutes: 30
         if: runner.os == 'macOS'
         run: |
           ./scripts/download-ckb.sh mac

@@ -156,6 +156,7 @@ jobs:
 
       - name: Package for MacOS
         if: ${{ runner.os == 'macOS' && env.MAC_SHOULD_CODE_SIGN == 'true' }}
+        timeout-minutes: 30
         run: |
           ./scripts/download-ckb.sh mac
           yarn package:test mac
