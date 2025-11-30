@@ -16,9 +16,11 @@ export const protobufPackage = "perunwire";
  */
 export interface Envelope {
   /** sender of the message. */
-  sender: Uint8Array;
+  sender:
+    | Address
+    | undefined;
   /** intended recipient of the message. */
-  recipient: Uint8Array;
+  recipient: Address | undefined;
   pingMsg?: PingMsg | undefined;
   pongMsg?: PongMsg | undefined;
   shutdownMsg?: ShutdownMsg | undefined;
@@ -54,6 +56,17 @@ export interface Balances {
   balances: Balance[];
 }
 
+/** AddressMapping represents an element of a address mapping. */
+export interface AddressMapping {
+  key: Uint8Array;
+  address: Uint8Array;
+}
+
+/** Address represents the map of addresses for each participant in the channel. */
+export interface Address {
+  addressMapping: AddressMapping[];
+}
+
 /**
  * IndexMap represents the mapping of a participant indices in a sub allocation
  * or a virtual channel funding proposal to the corresponding indices in the
@@ -87,6 +100,7 @@ export interface BaseChannelProposal {
   initData: Uint8Array;
   initBals: Allocation | undefined;
   fundingAgreement: Balances | undefined;
+  aux: Uint8Array;
 }
 
 /** BaseChannelProposalAcc represents client.BaseChannelProposalAcc. */
@@ -99,11 +113,12 @@ export interface BaseChannelProposalAcc {
 export interface Params {
   id: Uint8Array;
   challengeDuration: number;
-  parts: Uint8Array[];
+  parts: Address[];
   app: Uint8Array;
   nonce: Uint8Array;
   ledgerChannel: boolean;
   virtualChannel: boolean;
+  aux: Uint8Array;
 }
 
 /** State represents channel.State. */
@@ -152,19 +167,20 @@ export interface ShutdownMsg {
 
 /** AuthResponseMsg represents wire.AuthResponseMsg. */
 export interface AuthResponseMsg {
+  signature: Uint8Array;
 }
 
 /** LedgerChannelProposalMsg represents client.LedgerChannelProposalMsg. */
 export interface LedgerChannelProposalMsg {
   baseChannelProposal: BaseChannelProposal | undefined;
-  participant: Uint8Array;
-  peers: Uint8Array[];
+  participant: Address | undefined;
+  peers: Address[];
 }
 
 /** LedgerChannelProposalAccMsg represents client.LedgerChannelProposalAccMsg. */
 export interface LedgerChannelProposalAccMsg {
   baseChannelProposalAcc: BaseChannelProposalAcc | undefined;
-  participant: Uint8Array;
+  participant: Address | undefined;
 }
 
 /** SubChannelProposalMsg represents client.SubChannelProposalMsg. */
@@ -181,8 +197,8 @@ export interface SubChannelProposalAccMsg {
 /** VirtualChannelProposalMsg represents client.VirtualChannelProposalMsg. */
 export interface VirtualChannelProposalMsg {
   baseChannelProposal: BaseChannelProposal | undefined;
-  proposer: Uint8Array;
-  peers: Uint8Array[];
+  proposer: Address | undefined;
+  peers: Address[];
   parents: Uint8Array[];
   indexMaps: IndexMap[];
 }
@@ -190,7 +206,7 @@ export interface VirtualChannelProposalMsg {
 /** VirtualChannelProposalAccMsg represents client.VirtualChannelProposalAccMsg. */
 export interface VirtualChannelProposalAccMsg {
   baseChannelProposalAcc: BaseChannelProposalAcc | undefined;
-  responder: Uint8Array;
+  responder: Address | undefined;
 }
 
 /** ChannelProposalRejMsg represents client.ChannelProposalRejMsg. */
@@ -246,8 +262,8 @@ export interface ChannelSyncMsg {
 
 function createBaseEnvelope(): Envelope {
   return {
-    sender: new Uint8Array(0),
-    recipient: new Uint8Array(0),
+    sender: undefined,
+    recipient: undefined,
     pingMsg: undefined,
     pongMsg: undefined,
     shutdownMsg: undefined,
@@ -270,11 +286,11 @@ function createBaseEnvelope(): Envelope {
 
 export const Envelope = {
   encode(message: Envelope, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.sender.length !== 0) {
-      writer.uint32(10).bytes(message.sender);
+    if (message.sender !== undefined) {
+      Address.encode(message.sender, writer.uint32(10).fork()).ldelim();
     }
-    if (message.recipient.length !== 0) {
-      writer.uint32(18).bytes(message.recipient);
+    if (message.recipient !== undefined) {
+      Address.encode(message.recipient, writer.uint32(18).fork()).ldelim();
     }
     if (message.pingMsg !== undefined) {
       PingMsg.encode(message.pingMsg, writer.uint32(26).fork()).ldelim();
@@ -344,14 +360,14 @@ export const Envelope = {
             break;
           }
 
-          message.sender = reader.bytes();
+          message.sender = Address.decode(reader, reader.uint32());
           continue;
         case 2:
           if (tag !== 18) {
             break;
           }
 
-          message.recipient = reader.bytes();
+          message.recipient = Address.decode(reader, reader.uint32());
           continue;
         case 3:
           if (tag !== 26) {
@@ -486,8 +502,8 @@ export const Envelope = {
 
   fromJSON(object: any): Envelope {
     return {
-      sender: isSet(object.sender) ? bytesFromBase64(object.sender) : new Uint8Array(0),
-      recipient: isSet(object.recipient) ? bytesFromBase64(object.recipient) : new Uint8Array(0),
+      sender: isSet(object.sender) ? Address.fromJSON(object.sender) : undefined,
+      recipient: isSet(object.recipient) ? Address.fromJSON(object.recipient) : undefined,
       pingMsg: isSet(object.pingMsg) ? PingMsg.fromJSON(object.pingMsg) : undefined,
       pongMsg: isSet(object.pongMsg) ? PongMsg.fromJSON(object.pongMsg) : undefined,
       shutdownMsg: isSet(object.shutdownMsg) ? ShutdownMsg.fromJSON(object.shutdownMsg) : undefined,
@@ -532,11 +548,11 @@ export const Envelope = {
 
   toJSON(message: Envelope): unknown {
     const obj: any = {};
-    if (message.sender.length !== 0) {
-      obj.sender = base64FromBytes(message.sender);
+    if (message.sender !== undefined) {
+      obj.sender = Address.toJSON(message.sender);
     }
-    if (message.recipient.length !== 0) {
-      obj.recipient = base64FromBytes(message.recipient);
+    if (message.recipient !== undefined) {
+      obj.recipient = Address.toJSON(message.recipient);
     }
     if (message.pingMsg !== undefined) {
       obj.pingMsg = PingMsg.toJSON(message.pingMsg);
@@ -601,8 +617,12 @@ export const Envelope = {
   },
   fromPartial(object: DeepPartial<Envelope>): Envelope {
     const message = createBaseEnvelope();
-    message.sender = object.sender ?? new Uint8Array(0);
-    message.recipient = object.recipient ?? new Uint8Array(0);
+    message.sender = (object.sender !== undefined && object.sender !== null)
+      ? Address.fromPartial(object.sender)
+      : undefined;
+    message.recipient = (object.recipient !== undefined && object.recipient !== null)
+      ? Address.fromPartial(object.recipient)
+      : undefined;
     message.pingMsg = (object.pingMsg !== undefined && object.pingMsg !== null)
       ? PingMsg.fromPartial(object.pingMsg)
       : undefined;
@@ -781,6 +801,141 @@ export const Balances = {
   fromPartial(object: DeepPartial<Balances>): Balances {
     const message = createBaseBalances();
     message.balances = object.balances?.map((e) => Balance.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseAddressMapping(): AddressMapping {
+  return { key: new Uint8Array(0), address: new Uint8Array(0) };
+}
+
+export const AddressMapping = {
+  encode(message: AddressMapping, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.address.length !== 0) {
+      writer.uint32(18).bytes(message.address);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): AddressMapping {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAddressMapping();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.key = reader.bytes();
+          continue;
+        case 2:
+          if (tag !== 18) {
+            break;
+          }
+
+          message.address = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AddressMapping {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(0),
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(0),
+    };
+  },
+
+  toJSON(message: AddressMapping): unknown {
+    const obj: any = {};
+    if (message.key.length !== 0) {
+      obj.key = base64FromBytes(message.key);
+    }
+    if (message.address.length !== 0) {
+      obj.address = base64FromBytes(message.address);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<AddressMapping>): AddressMapping {
+    return AddressMapping.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<AddressMapping>): AddressMapping {
+    const message = createBaseAddressMapping();
+    message.key = object.key ?? new Uint8Array(0);
+    message.address = object.address ?? new Uint8Array(0);
+    return message;
+  },
+};
+
+function createBaseAddress(): Address {
+  return { addressMapping: [] };
+}
+
+export const Address = {
+  encode(message: Address, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.addressMapping) {
+      AddressMapping.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): Address {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAddress();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.addressMapping.push(AddressMapping.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Address {
+    return {
+      addressMapping: globalThis.Array.isArray(object?.addressMapping)
+        ? object.addressMapping.map((e: any) => AddressMapping.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: Address): unknown {
+    const obj: any = {};
+    if (message.addressMapping?.length) {
+      obj.addressMapping = message.addressMapping.map((e) => AddressMapping.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<Address>): Address {
+    return Address.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<Address>): Address {
+    const message = createBaseAddress();
+    message.addressMapping = object.addressMapping?.map((e) => AddressMapping.fromPartial(e)) || [];
     return message;
   },
 };
@@ -1062,6 +1217,7 @@ function createBaseBaseChannelProposal(): BaseChannelProposal {
     initData: new Uint8Array(0),
     initBals: undefined,
     fundingAgreement: undefined,
+    aux: new Uint8Array(0),
   };
 }
 
@@ -1087,6 +1243,9 @@ export const BaseChannelProposal = {
     }
     if (message.fundingAgreement !== undefined) {
       Balances.encode(message.fundingAgreement, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.aux.length !== 0) {
+      writer.uint32(66).bytes(message.aux);
     }
     return writer;
   },
@@ -1147,6 +1306,13 @@ export const BaseChannelProposal = {
 
           message.fundingAgreement = Balances.decode(reader, reader.uint32());
           continue;
+        case 8:
+          if (tag !== 66) {
+            break;
+          }
+
+          message.aux = reader.bytes();
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1165,6 +1331,7 @@ export const BaseChannelProposal = {
       initData: isSet(object.initData) ? bytesFromBase64(object.initData) : new Uint8Array(0),
       initBals: isSet(object.initBals) ? Allocation.fromJSON(object.initBals) : undefined,
       fundingAgreement: isSet(object.fundingAgreement) ? Balances.fromJSON(object.fundingAgreement) : undefined,
+      aux: isSet(object.aux) ? bytesFromBase64(object.aux) : new Uint8Array(0),
     };
   },
 
@@ -1191,6 +1358,9 @@ export const BaseChannelProposal = {
     if (message.fundingAgreement !== undefined) {
       obj.fundingAgreement = Balances.toJSON(message.fundingAgreement);
     }
+    if (message.aux.length !== 0) {
+      obj.aux = base64FromBytes(message.aux);
+    }
     return obj;
   },
 
@@ -1210,6 +1380,7 @@ export const BaseChannelProposal = {
     message.fundingAgreement = (object.fundingAgreement !== undefined && object.fundingAgreement !== null)
       ? Balances.fromPartial(object.fundingAgreement)
       : undefined;
+    message.aux = object.aux ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1297,6 +1468,7 @@ function createBaseParams(): Params {
     nonce: new Uint8Array(0),
     ledgerChannel: false,
     virtualChannel: false,
+    aux: new Uint8Array(0),
   };
 }
 
@@ -1309,7 +1481,7 @@ export const Params = {
       writer.uint32(16).uint64(message.challengeDuration);
     }
     for (const v of message.parts) {
-      writer.uint32(26).bytes(v!);
+      Address.encode(v!, writer.uint32(26).fork()).ldelim();
     }
     if (message.app.length !== 0) {
       writer.uint32(34).bytes(message.app);
@@ -1322,6 +1494,9 @@ export const Params = {
     }
     if (message.virtualChannel !== false) {
       writer.uint32(56).bool(message.virtualChannel);
+    }
+    if (message.aux.length !== 0) {
+      writer.uint32(66).bytes(message.aux);
     }
     return writer;
   },
@@ -1352,7 +1527,7 @@ export const Params = {
             break;
           }
 
-          message.parts.push(reader.bytes());
+          message.parts.push(Address.decode(reader, reader.uint32()));
           continue;
         case 4:
           if (tag !== 34) {
@@ -1382,6 +1557,13 @@ export const Params = {
 
           message.virtualChannel = reader.bool();
           continue;
+        case 8:
+          if (tag !== 66) {
+            break;
+          }
+
+          message.aux = reader.bytes();
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1395,11 +1577,12 @@ export const Params = {
     return {
       id: isSet(object.id) ? bytesFromBase64(object.id) : new Uint8Array(0),
       challengeDuration: isSet(object.challengeDuration) ? globalThis.Number(object.challengeDuration) : 0,
-      parts: globalThis.Array.isArray(object?.parts) ? object.parts.map((e: any) => bytesFromBase64(e)) : [],
+      parts: globalThis.Array.isArray(object?.parts) ? object.parts.map((e: any) => Address.fromJSON(e)) : [],
       app: isSet(object.app) ? bytesFromBase64(object.app) : new Uint8Array(0),
       nonce: isSet(object.nonce) ? bytesFromBase64(object.nonce) : new Uint8Array(0),
       ledgerChannel: isSet(object.ledgerChannel) ? globalThis.Boolean(object.ledgerChannel) : false,
       virtualChannel: isSet(object.virtualChannel) ? globalThis.Boolean(object.virtualChannel) : false,
+      aux: isSet(object.aux) ? bytesFromBase64(object.aux) : new Uint8Array(0),
     };
   },
 
@@ -1412,7 +1595,7 @@ export const Params = {
       obj.challengeDuration = Math.round(message.challengeDuration);
     }
     if (message.parts?.length) {
-      obj.parts = message.parts.map((e) => base64FromBytes(e));
+      obj.parts = message.parts.map((e) => Address.toJSON(e));
     }
     if (message.app.length !== 0) {
       obj.app = base64FromBytes(message.app);
@@ -1426,6 +1609,9 @@ export const Params = {
     if (message.virtualChannel !== false) {
       obj.virtualChannel = message.virtualChannel;
     }
+    if (message.aux.length !== 0) {
+      obj.aux = base64FromBytes(message.aux);
+    }
     return obj;
   },
 
@@ -1436,11 +1622,12 @@ export const Params = {
     const message = createBaseParams();
     message.id = object.id ?? new Uint8Array(0);
     message.challengeDuration = object.challengeDuration ?? 0;
-    message.parts = object.parts?.map((e) => e) || [];
+    message.parts = object.parts?.map((e) => Address.fromPartial(e)) || [];
     message.app = object.app ?? new Uint8Array(0);
     message.nonce = object.nonce ?? new Uint8Array(0);
     message.ledgerChannel = object.ledgerChannel ?? false;
     message.virtualChannel = object.virtualChannel ?? false;
+    message.aux = object.aux ?? new Uint8Array(0);
     return message;
   },
 };
@@ -1999,11 +2186,14 @@ export const ShutdownMsg = {
 };
 
 function createBaseAuthResponseMsg(): AuthResponseMsg {
-  return {};
+  return { signature: new Uint8Array(0) };
 }
 
 export const AuthResponseMsg = {
-  encode(_: AuthResponseMsg, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+  encode(message: AuthResponseMsg, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.signature.length !== 0) {
+      writer.uint32(10).bytes(message.signature);
+    }
     return writer;
   },
 
@@ -2014,6 +2204,13 @@ export const AuthResponseMsg = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
+        case 1:
+          if (tag !== 10) {
+            break;
+          }
+
+          message.signature = reader.bytes();
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -2023,26 +2220,30 @@ export const AuthResponseMsg = {
     return message;
   },
 
-  fromJSON(_: any): AuthResponseMsg {
-    return {};
+  fromJSON(object: any): AuthResponseMsg {
+    return { signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(0) };
   },
 
-  toJSON(_: AuthResponseMsg): unknown {
+  toJSON(message: AuthResponseMsg): unknown {
     const obj: any = {};
+    if (message.signature.length !== 0) {
+      obj.signature = base64FromBytes(message.signature);
+    }
     return obj;
   },
 
   create(base?: DeepPartial<AuthResponseMsg>): AuthResponseMsg {
     return AuthResponseMsg.fromPartial(base ?? {});
   },
-  fromPartial(_: DeepPartial<AuthResponseMsg>): AuthResponseMsg {
+  fromPartial(object: DeepPartial<AuthResponseMsg>): AuthResponseMsg {
     const message = createBaseAuthResponseMsg();
+    message.signature = object.signature ?? new Uint8Array(0);
     return message;
   },
 };
 
 function createBaseLedgerChannelProposalMsg(): LedgerChannelProposalMsg {
-  return { baseChannelProposal: undefined, participant: new Uint8Array(0), peers: [] };
+  return { baseChannelProposal: undefined, participant: undefined, peers: [] };
 }
 
 export const LedgerChannelProposalMsg = {
@@ -2050,11 +2251,11 @@ export const LedgerChannelProposalMsg = {
     if (message.baseChannelProposal !== undefined) {
       BaseChannelProposal.encode(message.baseChannelProposal, writer.uint32(10).fork()).ldelim();
     }
-    if (message.participant.length !== 0) {
-      writer.uint32(18).bytes(message.participant);
+    if (message.participant !== undefined) {
+      Address.encode(message.participant, writer.uint32(18).fork()).ldelim();
     }
     for (const v of message.peers) {
-      writer.uint32(26).bytes(v!);
+      Address.encode(v!, writer.uint32(26).fork()).ldelim();
     }
     return writer;
   },
@@ -2078,14 +2279,14 @@ export const LedgerChannelProposalMsg = {
             break;
           }
 
-          message.participant = reader.bytes();
+          message.participant = Address.decode(reader, reader.uint32());
           continue;
         case 3:
           if (tag !== 26) {
             break;
           }
 
-          message.peers.push(reader.bytes());
+          message.peers.push(Address.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2101,8 +2302,8 @@ export const LedgerChannelProposalMsg = {
       baseChannelProposal: isSet(object.baseChannelProposal)
         ? BaseChannelProposal.fromJSON(object.baseChannelProposal)
         : undefined,
-      participant: isSet(object.participant) ? bytesFromBase64(object.participant) : new Uint8Array(0),
-      peers: globalThis.Array.isArray(object?.peers) ? object.peers.map((e: any) => bytesFromBase64(e)) : [],
+      participant: isSet(object.participant) ? Address.fromJSON(object.participant) : undefined,
+      peers: globalThis.Array.isArray(object?.peers) ? object.peers.map((e: any) => Address.fromJSON(e)) : [],
     };
   },
 
@@ -2111,11 +2312,11 @@ export const LedgerChannelProposalMsg = {
     if (message.baseChannelProposal !== undefined) {
       obj.baseChannelProposal = BaseChannelProposal.toJSON(message.baseChannelProposal);
     }
-    if (message.participant.length !== 0) {
-      obj.participant = base64FromBytes(message.participant);
+    if (message.participant !== undefined) {
+      obj.participant = Address.toJSON(message.participant);
     }
     if (message.peers?.length) {
-      obj.peers = message.peers.map((e) => base64FromBytes(e));
+      obj.peers = message.peers.map((e) => Address.toJSON(e));
     }
     return obj;
   },
@@ -2128,14 +2329,16 @@ export const LedgerChannelProposalMsg = {
     message.baseChannelProposal = (object.baseChannelProposal !== undefined && object.baseChannelProposal !== null)
       ? BaseChannelProposal.fromPartial(object.baseChannelProposal)
       : undefined;
-    message.participant = object.participant ?? new Uint8Array(0);
-    message.peers = object.peers?.map((e) => e) || [];
+    message.participant = (object.participant !== undefined && object.participant !== null)
+      ? Address.fromPartial(object.participant)
+      : undefined;
+    message.peers = object.peers?.map((e) => Address.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseLedgerChannelProposalAccMsg(): LedgerChannelProposalAccMsg {
-  return { baseChannelProposalAcc: undefined, participant: new Uint8Array(0) };
+  return { baseChannelProposalAcc: undefined, participant: undefined };
 }
 
 export const LedgerChannelProposalAccMsg = {
@@ -2143,8 +2346,8 @@ export const LedgerChannelProposalAccMsg = {
     if (message.baseChannelProposalAcc !== undefined) {
       BaseChannelProposalAcc.encode(message.baseChannelProposalAcc, writer.uint32(10).fork()).ldelim();
     }
-    if (message.participant.length !== 0) {
-      writer.uint32(18).bytes(message.participant);
+    if (message.participant !== undefined) {
+      Address.encode(message.participant, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -2168,7 +2371,7 @@ export const LedgerChannelProposalAccMsg = {
             break;
           }
 
-          message.participant = reader.bytes();
+          message.participant = Address.decode(reader, reader.uint32());
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2184,7 +2387,7 @@ export const LedgerChannelProposalAccMsg = {
       baseChannelProposalAcc: isSet(object.baseChannelProposalAcc)
         ? BaseChannelProposalAcc.fromJSON(object.baseChannelProposalAcc)
         : undefined,
-      participant: isSet(object.participant) ? bytesFromBase64(object.participant) : new Uint8Array(0),
+      participant: isSet(object.participant) ? Address.fromJSON(object.participant) : undefined,
     };
   },
 
@@ -2193,8 +2396,8 @@ export const LedgerChannelProposalAccMsg = {
     if (message.baseChannelProposalAcc !== undefined) {
       obj.baseChannelProposalAcc = BaseChannelProposalAcc.toJSON(message.baseChannelProposalAcc);
     }
-    if (message.participant.length !== 0) {
-      obj.participant = base64FromBytes(message.participant);
+    if (message.participant !== undefined) {
+      obj.participant = Address.toJSON(message.participant);
     }
     return obj;
   },
@@ -2208,7 +2411,9 @@ export const LedgerChannelProposalAccMsg = {
       (object.baseChannelProposalAcc !== undefined && object.baseChannelProposalAcc !== null)
         ? BaseChannelProposalAcc.fromPartial(object.baseChannelProposalAcc)
         : undefined;
-    message.participant = object.participant ?? new Uint8Array(0);
+    message.participant = (object.participant !== undefined && object.participant !== null)
+      ? Address.fromPartial(object.participant)
+      : undefined;
     return message;
   },
 };
@@ -2356,7 +2561,7 @@ export const SubChannelProposalAccMsg = {
 };
 
 function createBaseVirtualChannelProposalMsg(): VirtualChannelProposalMsg {
-  return { baseChannelProposal: undefined, proposer: new Uint8Array(0), peers: [], parents: [], indexMaps: [] };
+  return { baseChannelProposal: undefined, proposer: undefined, peers: [], parents: [], indexMaps: [] };
 }
 
 export const VirtualChannelProposalMsg = {
@@ -2364,11 +2569,11 @@ export const VirtualChannelProposalMsg = {
     if (message.baseChannelProposal !== undefined) {
       BaseChannelProposal.encode(message.baseChannelProposal, writer.uint32(10).fork()).ldelim();
     }
-    if (message.proposer.length !== 0) {
-      writer.uint32(18).bytes(message.proposer);
+    if (message.proposer !== undefined) {
+      Address.encode(message.proposer, writer.uint32(18).fork()).ldelim();
     }
     for (const v of message.peers) {
-      writer.uint32(26).bytes(v!);
+      Address.encode(v!, writer.uint32(26).fork()).ldelim();
     }
     for (const v of message.parents) {
       writer.uint32(34).bytes(v!);
@@ -2398,14 +2603,14 @@ export const VirtualChannelProposalMsg = {
             break;
           }
 
-          message.proposer = reader.bytes();
+          message.proposer = Address.decode(reader, reader.uint32());
           continue;
         case 3:
           if (tag !== 26) {
             break;
           }
 
-          message.peers.push(reader.bytes());
+          message.peers.push(Address.decode(reader, reader.uint32()));
           continue;
         case 4:
           if (tag !== 34) {
@@ -2435,8 +2640,8 @@ export const VirtualChannelProposalMsg = {
       baseChannelProposal: isSet(object.baseChannelProposal)
         ? BaseChannelProposal.fromJSON(object.baseChannelProposal)
         : undefined,
-      proposer: isSet(object.proposer) ? bytesFromBase64(object.proposer) : new Uint8Array(0),
-      peers: globalThis.Array.isArray(object?.peers) ? object.peers.map((e: any) => bytesFromBase64(e)) : [],
+      proposer: isSet(object.proposer) ? Address.fromJSON(object.proposer) : undefined,
+      peers: globalThis.Array.isArray(object?.peers) ? object.peers.map((e: any) => Address.fromJSON(e)) : [],
       parents: globalThis.Array.isArray(object?.parents) ? object.parents.map((e: any) => bytesFromBase64(e)) : [],
       indexMaps: globalThis.Array.isArray(object?.indexMaps)
         ? object.indexMaps.map((e: any) => IndexMap.fromJSON(e))
@@ -2449,11 +2654,11 @@ export const VirtualChannelProposalMsg = {
     if (message.baseChannelProposal !== undefined) {
       obj.baseChannelProposal = BaseChannelProposal.toJSON(message.baseChannelProposal);
     }
-    if (message.proposer.length !== 0) {
-      obj.proposer = base64FromBytes(message.proposer);
+    if (message.proposer !== undefined) {
+      obj.proposer = Address.toJSON(message.proposer);
     }
     if (message.peers?.length) {
-      obj.peers = message.peers.map((e) => base64FromBytes(e));
+      obj.peers = message.peers.map((e) => Address.toJSON(e));
     }
     if (message.parents?.length) {
       obj.parents = message.parents.map((e) => base64FromBytes(e));
@@ -2472,8 +2677,10 @@ export const VirtualChannelProposalMsg = {
     message.baseChannelProposal = (object.baseChannelProposal !== undefined && object.baseChannelProposal !== null)
       ? BaseChannelProposal.fromPartial(object.baseChannelProposal)
       : undefined;
-    message.proposer = object.proposer ?? new Uint8Array(0);
-    message.peers = object.peers?.map((e) => e) || [];
+    message.proposer = (object.proposer !== undefined && object.proposer !== null)
+      ? Address.fromPartial(object.proposer)
+      : undefined;
+    message.peers = object.peers?.map((e) => Address.fromPartial(e)) || [];
     message.parents = object.parents?.map((e) => e) || [];
     message.indexMaps = object.indexMaps?.map((e) => IndexMap.fromPartial(e)) || [];
     return message;
@@ -2481,7 +2688,7 @@ export const VirtualChannelProposalMsg = {
 };
 
 function createBaseVirtualChannelProposalAccMsg(): VirtualChannelProposalAccMsg {
-  return { baseChannelProposalAcc: undefined, responder: new Uint8Array(0) };
+  return { baseChannelProposalAcc: undefined, responder: undefined };
 }
 
 export const VirtualChannelProposalAccMsg = {
@@ -2489,8 +2696,8 @@ export const VirtualChannelProposalAccMsg = {
     if (message.baseChannelProposalAcc !== undefined) {
       BaseChannelProposalAcc.encode(message.baseChannelProposalAcc, writer.uint32(10).fork()).ldelim();
     }
-    if (message.responder.length !== 0) {
-      writer.uint32(18).bytes(message.responder);
+    if (message.responder !== undefined) {
+      Address.encode(message.responder, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -2514,7 +2721,7 @@ export const VirtualChannelProposalAccMsg = {
             break;
           }
 
-          message.responder = reader.bytes();
+          message.responder = Address.decode(reader, reader.uint32());
           continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -2530,7 +2737,7 @@ export const VirtualChannelProposalAccMsg = {
       baseChannelProposalAcc: isSet(object.baseChannelProposalAcc)
         ? BaseChannelProposalAcc.fromJSON(object.baseChannelProposalAcc)
         : undefined,
-      responder: isSet(object.responder) ? bytesFromBase64(object.responder) : new Uint8Array(0),
+      responder: isSet(object.responder) ? Address.fromJSON(object.responder) : undefined,
     };
   },
 
@@ -2539,8 +2746,8 @@ export const VirtualChannelProposalAccMsg = {
     if (message.baseChannelProposalAcc !== undefined) {
       obj.baseChannelProposalAcc = BaseChannelProposalAcc.toJSON(message.baseChannelProposalAcc);
     }
-    if (message.responder.length !== 0) {
-      obj.responder = base64FromBytes(message.responder);
+    if (message.responder !== undefined) {
+      obj.responder = Address.toJSON(message.responder);
     }
     return obj;
   },
@@ -2554,7 +2761,9 @@ export const VirtualChannelProposalAccMsg = {
       (object.baseChannelProposalAcc !== undefined && object.baseChannelProposalAcc !== null)
         ? BaseChannelProposalAcc.fromPartial(object.baseChannelProposalAcc)
         : undefined;
-    message.responder = object.responder ?? new Uint8Array(0);
+    message.responder = (object.responder !== undefined && object.responder !== null)
+      ? Address.fromPartial(object.responder)
+      : undefined;
     return message;
   },
 };
