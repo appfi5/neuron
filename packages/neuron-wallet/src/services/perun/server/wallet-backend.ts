@@ -1,7 +1,7 @@
 import { bytes } from '@ckb-lumos/codec'
-import { UpdateNotificationRequest, SignTransactionRequest } from '@ckb-connect/perun-wallet-wrapper/dist/perun-wallet'
-import { WalletBackend } from '@ckb-connect/perun-wallet-wrapper/dist/services'
-import { ValidOpenChannelRequest, ValidSignMessageRequest } from '@ckb-connect/perun-wallet-wrapper/dist/verifier'
+import { UpdateNotificationRequest, SignTransactionRequest } from '../../../utils/perun-wallet-wrapper/perun-wallet'
+import { WalletBackend } from '../../../utils/perun-wallet-wrapper/services'
+import { ValidOpenChannelRequest, ValidSignMessageRequest } from '../../../utils/perun-wallet-wrapper/verifier'
 import logger from '../../../utils/logger'
 
 export type IPCMessageRequest =

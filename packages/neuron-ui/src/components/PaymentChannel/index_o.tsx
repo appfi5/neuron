@@ -555,7 +555,7 @@ const Perun = () => {
         </div>
       }
     >
-      <PaymentChannelDemo />
+      {/* <PaymentChannelDemo /> */}
       <div className={styles.header}>
         <div className={styles.daoContainer}>
           <Dialog show={showPrompt} showFooter={false}>

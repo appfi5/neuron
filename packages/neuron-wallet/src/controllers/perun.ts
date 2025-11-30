@@ -3,16 +3,17 @@ import { PerunRequestSubject } from '../models/subjects/perun'
 import PerunService from '../services/perun/service'
 import logger from '../utils/logger'
 import { ResponseCode } from '../utils/const'
-import { SimpleChannelServiceClient } from '@ckb-connect/perun-wallet-wrapper/dist/services'
+import { SimpleChannelServiceClient } from '../utils/perun-wallet-wrapper/services'
+// import { SimpleChannelServiceClient } from '@ckb-connect/perun-wallet-wrapper/dist/services'
 import {
   AddressEncoder,
   channelIdFromString,
   channelIdToString,
-} from '@ckb-connect/perun-wallet-wrapper/dist/translator'
+} from '../utils/perun-wallet-wrapper/translator'
 import { interval } from 'rxjs'
-import { mkSimpleChannelServiceClient } from '@ckb-connect/perun-wallet-wrapper/dist/client'
+import { mkSimpleChannelServiceClient } from '../utils/perun-wallet-wrapper/client'
 import { bytes } from '@ckb-lumos/codec'
-import { Allocation, Balances } from '@ckb-connect/perun-wallet-wrapper/dist/wire'
+import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunPersistorService from '../services/perun/persistor'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
 
@@ -138,7 +139,7 @@ export default class PerunController {
       }),
     })
     const res = await PerunController.serviceClient
-      .openChannel(params.me, params.peer, alloc, params.challengeDuration)
+      .openChannel(params.me, params.peer, alloc, params.challengeDuration, new Uint8Array([5]))
       .catch(e => {
         logger.info('PerunController: openChannel-----error-----', e)
         return {

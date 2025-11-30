@@ -1,4 +1,4 @@
-import { mkWalletServiceServer } from '@ckb-connect/perun-wallet-wrapper/dist/services'
+import { mkWalletServiceServer } from '../../../utils/perun-wallet-wrapper/services'
 import { IPCWalletBackend } from './wallet-backend'
 import logger from '../../../utils/logger'
 

@@ -28,10 +28,10 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
   } = useGlobalState()
 
   const [formData, setFormData] = useState({
-    myAmount: 0,
-    peerAddress: '',
-    peerPubKey: '',
-    peerAmount: 0,
+    myAmount: 123,
+    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqd4a33y7unx66rqh03vwngh3e4t0x6yrhcd9sfns',
+    peerPubKey: '0x02a5b7bb6196db5edcd38c55de70ae61d4bc52cd8b1195cfa6278ca43c11a35ab3',
+    peerAmount: 125,
   })
 
   const [formErrors, setFormErrors] = useState({
@@ -126,7 +126,7 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
           <TextField label="My Public Key" disabled value={myPubKey} />
           <TextField
             field="myAmount"
-            label="My Amount"
+            label="My Amount (CKB)"
             value={formData.myAmount}
             onChange={handleInputChange}
             error={formErrors.myAmount}
@@ -148,7 +148,7 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
           />
           <TextField
             field="peerAmount"
-            label="Peer Amount"
+            label="Peer Amount (CKB)"
             value={formData.peerAmount}
             onChange={handleInputChange}
             error={formErrors.peerAmount}

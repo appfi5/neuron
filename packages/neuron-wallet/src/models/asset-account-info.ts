@@ -48,6 +48,7 @@ export default class AssetAccountInfo {
 
   constructor(genesisBlockHash: string = NetworksService.getInstance().getCurrent().genesisHash) {
     const isMainnet = genesisBlockHash === AssetAccountInfo.MAINNET_GENESIS_BLOCK_HASH
+    // @ts-ignore
     const { XUDT, SUDT, ANYONE_CAN_PAY } = isMainnet ? LINA.SCRIPTS : AGGRON4.SCRIPTS
     this.xudt = {
       cellDep: new CellDep(new OutPoint(XUDT.TX_HASH, XUDT.INDEX), XUDT.DEP_TYPE as DepType),

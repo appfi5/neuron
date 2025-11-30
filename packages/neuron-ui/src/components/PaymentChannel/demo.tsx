@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next"
 import { PerunRequest as PerunRequestSubject } from 'services/subjects'
 import { useState as useGlobalState } from 'states'
-import { channelIdToString, channelIdFromString } from '@ckb-connect/perun-wallet-wrapper/dist/translator'
-import * as wire from '@ckb-connect/perun-wallet-wrapper/dist/wire'
+import { channelIdToString, channelIdFromString } from '../../utils/perun-wallet-wrapper/translator'
+import * as wire from '../../utils/perun-wallet-wrapper/wire'
 import { getParticipantByAddressAndPubkey, isSuccessResponse } from "utils"
 import { perunServiceAction } from "services/remote"
 import { useEffect } from "react"
@@ -12,7 +12,7 @@ const accountFrom = {
   pubKey: "0x02372431f7ce5e18e100e56d6d8e74145ec00ad59878887a353aca8ca52e64119c",
   payload: {
     type: null,
-    amout: 100,
+    amout: 123,
   }
 }
 
@@ -21,7 +21,7 @@ const accountTo = {
   pubKey: "0x02a5b7bb6196db5edcd38c55de70ae61d4bc52cd8b1195cfa6278ca43c11a35ab3",
   payload: {
     type: null,
-    amout: 100,
+    amout: 125,
   }
 }
 
