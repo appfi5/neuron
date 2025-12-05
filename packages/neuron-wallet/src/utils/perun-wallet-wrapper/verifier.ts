@@ -1,14 +1,14 @@
 import { PerunError } from "./error";
 import { OpenChannelRequest } from "./perun-wallet";
-import { Allocation, Balances } from "./wire";
+import { Address, Allocation, Balances } from "./wire";
 
 const TEMP_CHANNEL_ID_LENGTH = 32; // 32-byte array
 
 export interface ValidOpenChannelRequest {
   // The participant opening the channel.
-  participant: Uint8Array;
+  participant: Address | undefined;
   // Peers requested to participate in the channel.
-  peers: Uint8Array[];
+  peers: Address[];
   // Id of this channel proposal, can be used to match the request.
   proposalId: Uint8Array;
   // Duration of the challenge phase in seconds.

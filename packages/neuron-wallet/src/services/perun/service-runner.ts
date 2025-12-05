@@ -116,6 +116,7 @@ export class PerunServiceRunner {
 
     // 处理这个，比如让用户通过请求？？
     crypto.getRandomValues(nonceShare)
+    // goto file:///./server/wallet-backend.ts#L40
     this.ipcReturn('openChannelResponse', {
       nonceShare,
     })
