@@ -10,6 +10,10 @@ import SyncProgress from './entities/sync-progress'
 import TxLock from './entities/tx-lock'
 import AmendTransactionEntity from './entities/amend-transaction'
 import { getConnection } from '../../database/chain/connection'
+import PerunRequestEntity from './entities/perun-request'
+import PerunActivity from './entities/perun-activity'
+import PerunChannel from './entities/perun-channel'
+import PerunContact from './entities/perun-contact'
 
 /*
  * Clean local sqlite storage
@@ -24,6 +28,10 @@ export const clean = async (clearAllLightClientData?: boolean) => {
       MultisigOutput,
       TxLock,
       AmendTransactionEntity,
+      PerunRequestEntity,
+      PerunActivity,
+      PerunChannel,
+      PerunContact,
     ].map(entity => {
       return getConnection().getRepository(entity).clear()
     }),

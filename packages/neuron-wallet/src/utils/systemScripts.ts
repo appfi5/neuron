@@ -51,6 +51,7 @@ export const LINA = createConfig({
   SCRIPTS: {
     ...predefined.LINA.SCRIPTS,
     ...getPredefinedFromEnv(true, 'SUDT', 'SUDT'),
+    // @ts-ignore
     ...getPredefinedFromEnv(true, 'XUDT', 'XUDT'),
     ...getPredefinedFromEnv(true, 'ACP', 'ANYONE_CAN_PAY'),
   },
@@ -61,6 +62,7 @@ export const AGGRON4 = createConfig({
   SCRIPTS: {
     ...predefined.AGGRON4.SCRIPTS,
     ...getPredefinedFromEnv(false, 'SUDT', 'SUDT'),
+    // @ts-ignore
     ...getPredefinedFromEnv(false, 'XUDT', 'XUDT'),
     ...getPredefinedFromEnv(false, 'ACP', 'ANYONE_CAN_PAY'),
   },
