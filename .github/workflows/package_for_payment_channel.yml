@@ -1,4 +1,4 @@
-name: Package Neuron for Test
+name: Package Neuron for Payment Channel
 
 on: 
   issue_comment:
