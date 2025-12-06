@@ -16,6 +16,7 @@ import OutPoint from '../../models/chain/out-point'
 import RpcService from '../../services/rpc-service'
 import { TransactionsService } from '../tx'
 import NetworksService from '../networks'
+import { LightRPC } from 'src/utils/ckb-rpc'
 
 // Architecture overview:
 //
@@ -290,9 +291,12 @@ export class PerunServiceRunner {
           logger.info('USING RPC-SERVICE')
           const rpcTip = await rpcService.getTipHeader()
           logger.info('TIP:', rpcTip)
-          const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
+          // 这里查询peer tx会报错 status: added
+          // const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
+          const rpcTx = await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus;
           logger.info('RPC-TX:', rpcTx)
-          if (rpcTx && rpcTx.transaction) {
+          
+          if (rpcTx?.transaction) {
             logger.info("rpc output's index:", input.previousOutput.index)
             logger.info('rpc outputs', rpcTx.transaction.outputs)
             liveCell = rpcTx.transaction.outputs[Number(input.previousOutput.index)]

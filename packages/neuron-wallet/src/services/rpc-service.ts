@@ -11,7 +11,7 @@ import TxStatus, { TxStatusType } from '../models/chain/tx-status'
 export default class RpcService {
   private retryTime: number
   private retryInterval: number
-  private rpc: ReturnType<typeof generateRPC>
+  public rpc: ReturnType<typeof generateRPC>
   public readonly url: string
 
   constructor(url: string, type: NetworkType, retryTime: number = 3, retryInterval: number = 100) {
