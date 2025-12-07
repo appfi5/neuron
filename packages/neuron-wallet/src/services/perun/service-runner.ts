@@ -316,11 +316,17 @@ export class PerunServiceRunner {
           previousOutput: OutPoint.fromObject(typedInput.previousOutput),
           since: typedInput.since,
           capacity: liveCell.capacity,
+          // @ts-ignore
           lock: liveCell.lock,
+          // @ts-ignore
           lockHash: liveCell.lockHash,
+          // @ts-ignore
           multiSignBlake160: liveCell.multiSignBlake160,
+          // @ts-ignore
           type: liveCell.type,
+          // @ts-ignore
           typeHash: liveCell.typeHash,
+          // @ts-ignore
           data: liveCell.data,
         })
         resolvedInput.setInputIndex(idx.toString())

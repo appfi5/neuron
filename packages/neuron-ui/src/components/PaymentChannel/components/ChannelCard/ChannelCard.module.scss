@@ -1,0 +1,71 @@
+.overviewItem {
+  background: var(--table-head-background-color);
+  border-radius: 16px;
+  min-width: 302px;
+}
+
+.overviewItemContent {
+  padding: 16px 16px 12px;
+
+  .itemCell {
+    display: flex;
+    margin-bottom: 4px;
+
+    p {
+      flex: 1;
+      color: var(--input-second-color);
+      font-size: 12px;
+    }
+
+    h2 {
+      flex: 1;
+      color: var(--main-text-color);
+      font-size: 14px;
+    }
+  }
+
+  .time {
+    color: var(--primary-color);
+  }
+
+  .address {
+    font-family: 'JetBrains Mono';
+    margin: 4px 0 12px;
+    font-weight: 500;
+  }
+}
+
+.overviewItemActions {
+  border-top: 1px solid var(--input-border-color);
+
+  button {
+    gap: 4px;
+    color: var(--secondary-text-color);
+
+    &:hover {
+      color: var(--primary-color);
+
+      svg {
+
+        g,
+        path {
+          fill: var(--primary-color);
+        }
+      }
+    }
+
+    &[data-color='error'] {
+      &:hover {
+        color: var(--error-color);
+
+        svg {
+
+          g,
+          path {
+            fill: var(--error-color);
+          }
+        }
+      }
+    }
+  }
+}

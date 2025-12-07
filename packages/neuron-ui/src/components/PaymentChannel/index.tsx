@@ -26,9 +26,9 @@ import { type CKBComponents } from '@ckb-lumos/lumos/rpc'
 import {
   SerializeOffChainParticipant,
   SerializeSEC1EncodedPubKey,
-} from '@ckb-connect/perun-wallet-wrapper/dist/ckb/serialization'
-import { channelIdToString, channelIdFromString } from '@ckb-connect/perun-wallet-wrapper/dist/translator'
-import * as wire from '@ckb-connect/perun-wallet-wrapper/dist/wire'
+} from 'utils/perun-wallet-wrapper/ckb/serialization'
+import { channelIdToString, channelIdFromString } from 'utils/perun-wallet-wrapper/translator'
+import * as wire from 'utils/perun-wallet-wrapper/wire'
 
 import { ControllerResponse } from 'services/remote/remoteApiWrapper'
 import {
@@ -60,6 +60,7 @@ import PerunSendPayment from 'components/PerunSendPayment'
 import type { State } from 'utils/perun-wallet-wrapper/wire'
 import RowExtend from './RowExtend'
 import styles from './perun.module.scss'
+import ChannelCard from './components/ChannelCard'
 
 enum DialogType {
   creationRequest = 'creationRequest',
@@ -111,89 +112,27 @@ const PaymentChannel = () => {
         if (!isSuccessResponse(actionRes)) {
           return
         }
-
-        const id = actionRes.result.channels.states[0].id.data
-        const { version } = actionRes.result.channels.states[0]
-        const { app } = actionRes.result.channels.states[0]
-
-        const alloc = wire.Allocation.create({
-          assets: [new Uint8Array(32)],
-          balances: wire.Balances.create({
-            balances: [
-              {
-                balance: [
-                  actionRes.result.channels.states[0].allocation.balances.balances[0].balance[0].data,
-                  actionRes.result.channels.states[0].allocation.balances.balances[0].balance[1].data,
-                ],
-              },
-            ],
-          }),
-          locked: [],
-        })
-        const { data } = actionRes.result.channels.states[0]
-        const { isFinal } = actionRes.result.channels.states[0]
-
-        const state = wire.State.create({
-          id,
-          version,
-          app,
-          allocation: alloc,
-          data,
-          isFinal,
-        })
-        setChannels(prev => {
-          if(!!prev.find(item => item.id === state.id)) {
-            // todo
-            return prev
-          }
-          return [...prev, state]
-        })
+        const channelStates = actionRes.result.channels.states.map(channelState => {
+          const { id: idObj, version, app, allocation, data, isFinal } = channelState;
+          const id = idObj.data;
+          const alloc = wire.Allocation.create(allocation);
+          const state = wire.State.create({
+            id,
+            version,
+            app,
+            allocation: alloc,
+            data,
+            isFinal,
+          })
+          return state;
+        });
+        console.log({ channelStates })
+        setChannels(channelStates);
       })()
 
     }
 
   }, [requesterId, requests])
-
-
-  const handleExpandClick = (idx: number | null) => {
-    setExpandedRow(prevIndex => (prevIndex === idx ? null : idx))
-  }
-
-  // const columns: TableProps<wire.State[]>['columns'] = [
-  //   {
-  //     title: t('history.table.asset'),
-  //     dataIndex: 'allocation',
-  //     align: 'left',
-  //     minWidth: '150px',
-  //     render: (_, __, item) => JSON.stringify(item.allocation),
-  //   },
-  //   {
-  //     title: t('perun.creation-time'),
-  //     dataIndex: 'createdAt',
-  //     align: 'left',
-  //     minWidth: '150px',
-  //     render: (_, __, item) => item.createdAt,
-  //     sortable: true,
-  //   },
-  //   {
-  //     title: t('history.table.status'),
-  //     dataIndex: 'status',
-  //     align: 'left',
-  //     minWidth: '50px',
-  //     render(_, __, item) {
-  //       return 'status'
-  //     },
-  //   },
-  //   {
-  //     title: t('history.table.operation'),
-  //     dataIndex: 'operation',
-  //     align: 'center',
-  //     minWidth: '72px',
-  //     render(_, idx) {
-  //       return <ArrowNext className={styles.arrow} data-is-expand-show={expandedRow === idx} />
-  //     },
-  //   },
-  // ]
 
   return (
     <PageContainer
@@ -270,6 +209,18 @@ const PaymentChannel = () => {
               expandedRow={expandedRow}
               onRowClick={(_, __, idx) => handleExpandClick(idx)}
             /> */}
+          </div>
+          <div className={styles.overviewWrap}>
+            {channels.map(item => (
+              <ChannelCard
+                key={channelIdToString(item.id)}
+                channelState={item}
+                onClose={() => { }}
+                onSend={() => { }}
+              // onClose={() => setShowCloseChannelDialog(true)}
+              // onSend={() => setShowSendDialog(true)}
+              />
+            ))}
           </div>
         </div>
 
