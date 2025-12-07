@@ -17,6 +17,7 @@ import RpcService from '../../services/rpc-service'
 import { TransactionsService } from '../tx'
 import NetworksService from '../networks'
 import { LightRPC } from 'src/utils/ckb-rpc'
+import { NetworkType } from 'src/models/network'
 
 // Architecture overview:
 //
@@ -190,17 +191,17 @@ export class PerunServiceRunner {
         const first_byte = tmp_r[0]
         let r: Uint8Array = new Uint8Array()
         if ((first_byte & 0x80) >= 0x80) {
-          logger.info("Padding R with '00'")
+          // logger.info("Padding R with '00'")
           r = new Uint8Array([0x00])
         }
         r = bytes.concat(r, tmp_r)
 
         const s = bytes.bytify('0x' + sig.slice(64, 128).replace(/^(00)+/, ''))
-        logger.info(`full signature: ${sig}`)
-        logger.info(`r before stripping padding: ${sig.slice(0, 64)}`)
-        logger.info(`s before stripping padding: ${sig.slice(64, 128)}`)
-        logger.info(`r after stripping padding: ${bytes.hexify(r)}`)
-        logger.info(`s after stripping padding: ${bytes.hexify(s)}`)
+        // logger.info(`full signature: ${sig}`)
+        // logger.info(`r before stripping padding: ${sig.slice(0, 64)}`)
+        // logger.info(`s before stripping padding: ${sig.slice(64, 128)}`)
+        // logger.info(`r after stripping padding: ${bytes.hexify(r)}`)
+        // logger.info(`s after stripping padding: ${bytes.hexify(s)}`)
         const numberToHexString = (num: number) => {
           const hex = num.toString(16)
           return hex.length === 1 ? '0' + hex : hex
@@ -291,11 +292,13 @@ export class PerunServiceRunner {
           logger.info('USING RPC-SERVICE')
           const rpcTip = await rpcService.getTipHeader()
           logger.info('TIP:', rpcTip)
-          // 这里查询peer tx会报错 status: added
           // const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
-          const rpcTx = await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus;
+          const rpcTx = network.type === NetworkType.Light
+           // light rpc did't include the tx of peer A user
+            ? await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus
+            : await rpcService.getTransaction(input.previousOutput.txHash)
           logger.info('RPC-TX:', rpcTx)
-          
+
           if (rpcTx?.transaction) {
             logger.info("rpc output's index:", input.previousOutput.index)
             logger.info('rpc outputs', rpcTx.transaction.outputs)
@@ -333,7 +336,7 @@ export class PerunServiceRunner {
         resolvedInputs.push(resolvedInput)
       }
       logger.info('Resolved inputs', resolvedInputs)
-      logger.info('Transformed request', { sdkScript, sdkTx })
+      logger.info('Transformed request', { sdkScript, sdkTx: JSON.stringify(sdkTx) })
       const identifier = Script.fromSDK(sdkScript)
       const transaction = Transaction.fromSDK(sdkTx.txView)
       // Update the transaction with the resolved inputs.
