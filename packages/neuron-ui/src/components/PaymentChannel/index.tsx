@@ -57,7 +57,7 @@ import PerunLockedInChannels from 'components/PerunLockedInChannels'
 import PerunCloseChannel from 'components/PerunCloseChannel'
 import PerunOpenChannel from 'components/PerunOpenChannel'
 import PerunSendPayment from 'components/PerunSendPayment'
-import { State } from '@ckb-connect/perun-wallet-wrapper/wire'
+import type { State } from 'utils/perun-wallet-wrapper/wire'
 import RowExtend from './RowExtend'
 import styles from './perun.module.scss'
 
@@ -72,12 +72,15 @@ enum DialogType {
 const PaymentChannel = () => {
   const {
     wallet,
-    perun: { requests, channels },
+    perun: { requests }, // channels
   } = useGlobalState()
   const [t, _] = useTranslation()
+  const [channels, setChannels] = useState<wire.State[]>([])
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
 
   const [myPubKey, setMyPubKey] = useState<string>('')
+
+  const [requesterId, setRequesterId] = useState('');
 
   const [expandedRow, setExpandedRow] = useState<number | null>(null)
 
@@ -87,49 +90,110 @@ const PaymentChannel = () => {
     getCurrentWalletAccountExtendedPubKey({ type: 0, index: 0 }).then(res => {
       if (isSuccessResponse(res)) {
         setMyPubKey(res.result)
+        setRequesterId(getParticipantByAddressAndPubkey(wallet.addresses[0].address, res.result));
       }
     })
   }, [])
+
+  console.log('channels', channels);
+
+  useEffect(() => {
+    if (requesterId) {
+      (async () => {
+        const actionRes = await perunServiceAction({
+          type: 'get',
+          payload: {
+            requester: requesterId,
+          },
+        })
+
+        console.log('actionRes--get--', actionRes)
+        if (!isSuccessResponse(actionRes)) {
+          return
+        }
+
+        const id = actionRes.result.channels.states[0].id.data
+        const { version } = actionRes.result.channels.states[0]
+        const { app } = actionRes.result.channels.states[0]
+
+        const alloc = wire.Allocation.create({
+          assets: [new Uint8Array(32)],
+          balances: wire.Balances.create({
+            balances: [
+              {
+                balance: [
+                  actionRes.result.channels.states[0].allocation.balances.balances[0].balance[0].data,
+                  actionRes.result.channels.states[0].allocation.balances.balances[0].balance[1].data,
+                ],
+              },
+            ],
+          }),
+          locked: [],
+        })
+        const { data } = actionRes.result.channels.states[0]
+        const { isFinal } = actionRes.result.channels.states[0]
+
+        const state = wire.State.create({
+          id,
+          version,
+          app,
+          allocation: alloc,
+          data,
+          isFinal,
+        })
+        setChannels(prev => {
+          if(!!prev.find(item => item.id === state.id)) {
+            // todo
+            return prev
+          }
+          return [...prev, state]
+        })
+      })()
+
+    }
+
+  }, [requesterId, requests])
+
 
   const handleExpandClick = (idx: number | null) => {
     setExpandedRow(prevIndex => (prevIndex === idx ? null : idx))
   }
 
-  const columns: TableProps<State.Transaction>['columns'] = [
-    {
-      title: t('history.table.asset'),
-      dataIndex: 'allocation',
-      align: 'left',
-      minWidth: '150px',
-      render: (_, __, item) => JSON.stringify(item.allocation),
-    },
-    {
-      title: t('perun.creation-time'),
-      dataIndex: 'createdAt',
-      align: 'left',
-      minWidth: '150px',
-      render: (_, __, item) => item.createdAt,
-      sortable: true,
-    },
-    {
-      title: t('history.table.status'),
-      dataIndex: 'status',
-      align: 'left',
-      minWidth: '50px',
-      render(_, __, item) {
-        return 'status'
-      },
-    },
-    {
-      title: t('history.table.operation'),
-      dataIndex: 'operation',
-      align: 'center',
-      minWidth: '72px',
-      render(_, idx) {
-        return <ArrowNext className={styles.arrow} data-is-expand-show={expandedRow === idx} />
-      },
-    },
-  ]
+  // const columns: TableProps<wire.State[]>['columns'] = [
+  //   {
+  //     title: t('history.table.asset'),
+  //     dataIndex: 'allocation',
+  //     align: 'left',
+  //     minWidth: '150px',
+  //     render: (_, __, item) => JSON.stringify(item.allocation),
+  //   },
+  //   {
+  //     title: t('perun.creation-time'),
+  //     dataIndex: 'createdAt',
+  //     align: 'left',
+  //     minWidth: '150px',
+  //     render: (_, __, item) => item.createdAt,
+  //     sortable: true,
+  //   },
+  //   {
+  //     title: t('history.table.status'),
+  //     dataIndex: 'status',
+  //     align: 'left',
+  //     minWidth: '50px',
+  //     render(_, __, item) {
+  //       return 'status'
+  //     },
+  //   },
+  //   {
+  //     title: t('history.table.operation'),
+  //     dataIndex: 'operation',
+  //     align: 'center',
+  //     minWidth: '72px',
+  //     render(_, idx) {
+  //       return <ArrowNext className={styles.arrow} data-is-expand-show={expandedRow === idx} />
+  //     },
+  //   },
+  // ]
 
   return (
     <PageContainer
@@ -198,14 +262,14 @@ const PaymentChannel = () => {
           </div>
 
           <div className={styles.overviewContent}>
-            <Table
+            {/* <Table
               columns={columns}
               dataSource={channels}
               noDataContent={t('overview.no-recent-activities')}
               rowExtendRender={channel => <RowExtend channel={channel} />}
               expandedRow={expandedRow}
               onRowClick={(_, __, idx) => handleExpandClick(idx)}
-            />
+            /> */}
           </div>
         </div>
 
