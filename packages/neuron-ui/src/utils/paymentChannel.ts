@@ -3,7 +3,7 @@ import { blockchain } from '@ckb-lumos/base'
 import {
   SerializeOffChainParticipant,
   SerializeSEC1EncodedPubKey,
-} from '@ckb-connect/perun-wallet-wrapper/dist/ckb/serialization'
+} from 'utils/perun-wallet-wrapper/ckb/serialization'
 import { addressToScript } from './scriptAndAddress'
 
 export const equalNumPaddedHex = (num: bigint) => {

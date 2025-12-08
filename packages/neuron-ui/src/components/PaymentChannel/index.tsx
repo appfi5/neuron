@@ -56,11 +56,10 @@ import PerunCreationRequestList from 'components/PerunCreationRequestList'
 import PerunLockedInChannels from 'components/PerunLockedInChannels'
 import PerunCloseChannel from 'components/PerunCloseChannel'
 import PerunOpenChannel from 'components/PerunOpenChannel'
-import PerunSendPayment from 'components/PerunSendPayment'
-import type { State } from 'utils/perun-wallet-wrapper/wire'
-import RowExtend from './RowExtend'
 import styles from './perun.module.scss'
 import ChannelCard from './components/ChannelCard'
+import { useInterval, useRequest } from 'ahooks'
+import { getChannels } from './api'
 
 enum DialogType {
   creationRequest = 'creationRequest',
@@ -76,14 +75,20 @@ const PaymentChannel = () => {
     perun: { requests }, // channels
   } = useGlobalState()
   const [t, _] = useTranslation()
-  const [channels, setChannels] = useState<wire.State[]>([])
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
 
   const [myPubKey, setMyPubKey] = useState<string>('')
 
-  const [requesterId, setRequesterId] = useState('');
 
-  const [expandedRow, setExpandedRow] = useState<number | null>(null)
+  const { data: channels = [], run: syncChannels } = useRequest(async () => {
+    const list = await getChannels(myPubKey, wallet.addresses[0].address)
+    return list;
+  }, {
+    ready: !!myPubKey, //  && (wallet.addresses.length > 0)
+    manual: true,
+  })
+
+  useInterval(syncChannels, !!myPubKey ? 5000 : 0)
 
   const assets = ['CKB']
 
@@ -91,48 +96,9 @@ const PaymentChannel = () => {
     getCurrentWalletAccountExtendedPubKey({ type: 0, index: 0 }).then(res => {
       if (isSuccessResponse(res)) {
         setMyPubKey(res.result)
-        setRequesterId(getParticipantByAddressAndPubkey(wallet.addresses[0].address, res.result));
       }
     })
   }, [])
-
-  console.log('channels', channels);
-
-  useEffect(() => {
-    if (requesterId) {
-      (async () => {
-        const actionRes = await perunServiceAction({
-          type: 'get',
-          payload: {
-            requester: requesterId,
-          },
-        })
-
-        console.log('actionRes--get--', actionRes)
-        if (!isSuccessResponse(actionRes)) {
-          return
-        }
-        const channelStates = actionRes.result.channels.states.map(channelState => {
-          const { id: idObj, version, app, allocation, data, isFinal } = channelState;
-          const id = idObj.data;
-          const alloc = wire.Allocation.create(allocation);
-          const state = wire.State.create({
-            id,
-            version,
-            app,
-            allocation: alloc,
-            data,
-            isFinal,
-          })
-          return state;
-        });
-        console.log({ channelStates })
-        setChannels(channelStates);
-      })()
-
-    }
-
-  }, [requesterId, requests])
 
   return (
     <PageContainer
@@ -242,7 +208,7 @@ const PaymentChannel = () => {
           myPubKey={myPubKey}
         />
 
-        {dialogType === DialogType.send && <PerunSendPayment onClose={() => setDialogType(undefined)} />}
+        {/* {dialogType === DialogType.send && <PerunSendPayment onClose={() => setDialogType(undefined)} />} */}
       </div>
     </PageContainer>
   )

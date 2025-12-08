@@ -13,8 +13,8 @@ import Button from 'widgets/Button'
 import PageContainer from 'components/PageContainer'
 import { PerunIcon } from 'widgets/Icons/icon'
 import { type CKBComponents } from '@ckb-lumos/lumos/rpc'
-import { channelIdToString, channelIdFromString } from '@ckb-connect/perun-wallet-wrapper/dist/translator'
-import * as wire from '@ckb-connect/perun-wallet-wrapper/dist/wire'
+import { channelIdToString, channelIdFromString } from 'utils/perun-wallet-wrapper/translator'
+import * as wire from 'utils/perun-wallet-wrapper/wire'
 
 import { ControllerResponse } from 'services/remote/remoteApiWrapper'
 import {
@@ -39,7 +39,7 @@ import {
   bigIntStringToHex,
 } from 'utils'
 import { PasswordDialog } from 'components/SignAndVerify'
-import { State } from '@ckb-connect/perun-wallet-wrapper/dist/wire'
+import { State } from 'utils/perun-wallet-wrapper/wire'
 import TextField from 'widgets/TextField'
 import styles from './perun.module.scss'
 import PaymentChannelDemo from './demo'

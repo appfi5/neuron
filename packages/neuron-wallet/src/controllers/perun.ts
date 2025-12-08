@@ -4,7 +4,6 @@ import PerunService from '../services/perun/service'
 import logger from '../utils/logger'
 import { ResponseCode } from '../utils/const'
 import { SimpleChannelServiceClient } from '../utils/perun-wallet-wrapper/services'
-// import { SimpleChannelServiceClient } from '@ckb-connect/perun-wallet-wrapper/dist/services'
 import {
   AddressEncoder,
   channelIdFromString,

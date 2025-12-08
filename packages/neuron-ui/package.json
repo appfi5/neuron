@@ -47,7 +47,6 @@
     "displayName": "UI Tests"
   },
   "dependencies": {
-    "@ckb-connect/perun-wallet-wrapper": "1.0.5",
     "@ckb-lumos/base": "0.23.0",
     "@ckb-lumos/bi": "0.23.0",
     "@ckb-lumos/codec": "0.23.0",
@@ -59,6 +58,7 @@
     "@ckb-lumos/rpc": "0.23.0",
     "@grpc/grpc-js": "^1.14.1",
     "@grpc/proto-loader": "^0.8.0",
+    "ahooks": "^3.9.6",
     "canvg": "3.0.11",
     "i18next": "23.7.11",
     "immer": "9.0.21",

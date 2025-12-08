@@ -5,35 +5,27 @@ import TextField from 'widgets/TextField'
 import Spinner, { SpinnerSize } from 'widgets/Spinner'
 import { openExternal, MultisigConfig } from 'services/remote'
 import { localNumberFormatter, shannonToCKBFormatter } from 'utils'
-import getMultisigSignStatus from 'utils/getMultisigSignStatus'
-import { Attention, Success } from 'widgets/Icons/icon'
 import Dialog from 'widgets/Dialog'
-import Tooltip from 'widgets/Tooltip'
-import Alert from 'widgets/Alert'
 import styles from './perunSendPayment.module.scss'
-import {
-  useBalanceReserved,
-  useDepositValue,
-  useGenerateDaoDepositTx,
-  useOnDepositDialogCancel,
-  useOnDepositDialogSubmit,
-  useDepositRewards,
-} from './hooks'
+
 
 const NERVOS_DAO_RFC_URL =
   'https://www.github.com/nervosnetwork/rfcs/blob/master/rfcs/0023-dao-deposit-withdraw/0023-dao-deposit-withdraw.md'
 
-const PerunSendPayment = ({ onClose }: { onClose: () => void }) => {
+const PerunSendPayment = ({ onClose, onConfirm }: { onClose: () => void, onConfirm: (swapAmount: number) => void }) => {
   const [t, { language }] = useTranslation()
   const [errorMessage, setErrorMessage] = useState('')
+  const [updateAmount, setUpdateAmount] = useState<number>(0)
 
-  const balance = '1000000000000000000'
+  const handleUpdateAmountChange = (am: string) => {
+    const amountNum = parseFloat(am)
+    if (Number.isNaN(amountNum)) {
+      return
+    }
+    setUpdateAmount(amountNum)
+  }
 
   const [isTyping, setIsTyping] = useState(false)
-  const { depositValue, onChangeDepositValue, slidePercent, onSliderChange, resetDepositValue } =
-    useDepositValue(balance)
-
-  const { isBalanceReserved, onIsBalanceReservedChange, setIsBalanceReserved } = useBalanceReserved()
 
   const handleBlur = useCallback(() => {
     setIsTyping(false)
@@ -44,14 +36,20 @@ const PerunSendPayment = ({ onClose }: { onClose: () => void }) => {
   }, [setIsTyping])
 
   return (
-    <Dialog show title={t('perun.send-payment')} onCancel={onClose} className={styles.container}>
+    <Dialog
+      show
+      title={t('perun.send-payment')} onCancel={onClose} className={styles.container}
+      onConfirm={() => {
+        onConfirm(updateAmount);
+      }}
+    >
       <div>
         <div className={styles.depositValueLabelWrap}>
           <label className={styles.depositValueLabel} htmlFor="depositValue">{`${t(
-            'nervos-dao.deposit-amount'
+            'perun.enter-amount'
           )}`}</label>
         </div>
-        <Slider
+        {/* <Slider
           className={styles.slider}
           value={slidePercent}
           min={0}
@@ -59,21 +57,22 @@ const PerunSendPayment = ({ onClose }: { onClose: () => void }) => {
           step={1}
           showValue={false}
           onChange={onSliderChange}
-        />
+        /> */}
         <TextField
           className={styles.depositValue}
           width="100%"
           field="depositValue"
-          value={isTyping ? depositValue : localNumberFormatter(depositValue)}
-          onChange={onChangeDepositValue}
+          value={isTyping ? updateAmount : localNumberFormatter(updateAmount)}
+          // onChange={onChangeDepositValue}
+          onChange={(event: { currentTarget: { value: string } }) => {
+            handleUpdateAmountChange(event.currentTarget.value)
+          }}
           onBlur={handleBlur}
           onFocus={handleFocus}
           suffix="CKB"
           required
           error={errorMessage}
         />
-
-        <p className={styles.fee}>{t('perun.transaction-fee')}:</p>
       </div>
     </Dialog>
   )
