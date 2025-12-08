@@ -17,7 +17,7 @@ import RpcService from '../../services/rpc-service'
 import { TransactionsService } from '../tx'
 import NetworksService from '../networks'
 import { LightRPC } from 'src/utils/ckb-rpc'
-import { NetworkType } from 'src/models/network'
+import { NetworkType } from '../..//models/network'
 
 // Architecture overview:
 //
