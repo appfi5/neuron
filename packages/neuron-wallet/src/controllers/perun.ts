@@ -138,7 +138,7 @@ export default class PerunController {
   }
 
   async openChannel(params: Controller.Params.OpenChannelParams): Promise<Controller.Response> {
-    logger.info('PerunController: openChannel----------', params)
+    logger.info('PerunController: openChannel----------')
     const alloc = Allocation.create({
       assets: [new Uint8Array(1)],
       balances: Balances.create({

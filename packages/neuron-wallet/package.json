@@ -42,6 +42,7 @@
     ]
   },
   "dependencies": {
+    "@ckb-ccc/ccc": "^1.1.22",
     "@ckb-lumos/base": "0.23.0",
     "@ckb-lumos/ckb-indexer": "0.23.0",
     "@ckb-lumos/helpers": "0.23.0",

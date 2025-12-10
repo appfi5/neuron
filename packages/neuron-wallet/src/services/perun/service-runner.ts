@@ -14,12 +14,13 @@ import Input from '../../models/chain/input'
 import CellsService from '../../services/cells'
 import OutPoint from '../../models/chain/out-point'
 import RpcService from '../../services/rpc-service'
-import { TransactionsService } from '../tx'
+// import { TransactionsService } from '../tx'
 import NetworksService from '../networks'
-import { LightRPC } from 'src/utils/ckb-rpc'
-import { NetworkType } from '../../models/network'
+// import { LightRPC } from 'src/utils/ckb-rpc'
+// import { NetworkType } from '../../models/network'
 import generateConfigFiles, { ConfigFileOptions } from './configFiles'
 import SettingsService from '../settings'
+import { fetchTargetCell } from './fetchCell'
 
 const { app } = env
 
@@ -318,29 +319,30 @@ export class PerunServiceRunner {
         let liveCell = undefined
         while (retries < 25) {
           const fetchedCell = await CellsService.getLiveCell(OutPoint.fromObject(input.previousOutput))
-          const outputs = await CellsService.getOutputsByTransactionHash(input.previousOutput.txHash)
-          logger.info('fetched outputs:', outputs)
-          const tx = await TransactionsService.get(input.previousOutput.txHash)
-          logger.info('fetched tx:', tx)
+          // const outputs = await CellsService.getOutputsByTransactionHash(input.previousOutput.txHash)
+          // logger.info('fetched outputs:', outputs)
+          // const tx = await TransactionsService.get(input.previousOutput.txHash)
+          // logger.info('fetched tx:', tx)
           if (fetchedCell) {
             liveCell = fetchedCell
             break
           }
           logger.info('USING RPC-SERVICE')
-          const rpcTip = await rpcService.getTipHeader()
-          logger.info('TIP:', rpcTip)
+          // const rpcTip = await rpcService.getTipHeader()
+          // logger.info('TIP:', rpcTip)
           // const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
-          const rpcTx = network.type === NetworkType.Light
-            // light rpc did't include the tx of peer A user
-            ? await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus
-            : await rpcService.getTransaction(input.previousOutput.txHash)
-          logger.info('RPC-TX:', rpcTx)
+          // const rpcTx = network.type === NetworkType.Light
+          //   // light rpc did't include the tx of peer A user
+          //   ? await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus
+          //   : await rpcService.getTransaction(input.previousOutput.txHash)
+          // const targetCell = rpcTx?.transaction?.outputs[Number(input.previousOutput.index)]
+          // logger.info('RPC-TX:', rpcTx)
+          // todo testnet only for now
+          const targetCell = await fetchTargetCell(input.previousOutput.txHash, input.previousOutput.index);
+          // console.log("iCell", targetCell);
 
-          if (rpcTx?.transaction) {
-            logger.info("rpc output's index:", input.previousOutput.index)
-            logger.info('rpc outputs', rpcTx.transaction.outputs)
-            liveCell = rpcTx.transaction.outputs[Number(input.previousOutput.index)]
-            logger.info("live cell found in rpc-tx's outputs:", liveCell)
+          if (targetCell) {
+            liveCell = targetCell; // rpcTx.transaction.outputs[Number(input.previousOutput.index)]
             break
           }
           logger.info(`Failed to fetch live cell, retrying in ${delay}ms`)
@@ -351,6 +353,7 @@ export class PerunServiceRunner {
         if (!liveCell) {
           return reject(new Error('Failed to fetch live cell'))
         }
+        console.log("liveCell data check", liveCell)
 
         const resolvedInput = Input.fromObject({
           previousOutput: OutPoint.fromObject(typedInput.previousOutput),
