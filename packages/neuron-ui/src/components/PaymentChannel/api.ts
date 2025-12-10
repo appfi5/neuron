@@ -3,7 +3,18 @@ import { getParticipantByAddressAndPubkey, isSuccessResponse } from "utils";
 import * as wire from "utils/perun-wallet-wrapper/wire";
 
 
-
+export async function startupChannelServiceRunner(publicKey: string) {
+  const actionRes = await perunServiceAction({
+    type: 'startup',
+    payload: {
+      network: "testnet",
+      publicKey,
+    },
+  })
+  if (!isSuccessResponse(actionRes)) {
+    return []
+  }
+}
 export async function getChannels(publicKey: string, address: string) {
   const actionRes = await perunServiceAction({
     type: 'get',
@@ -37,6 +48,7 @@ export async function updateChannel(channelId: string, swapAmount: number) {
     type: 'update',
     payload: {
       channelId: channelId,
+      // todo 找到正确属于己方的balance
       index: 0,
       amount: swapAmount,
     },
@@ -45,4 +57,14 @@ export async function updateChannel(channelId: string, swapAmount: number) {
 
   return res;
 
+}
+
+export async function restoreChannels() {
+  const actionRes = await perunServiceAction({
+    type: 'restore',
+    payload: {
+      data: new Uint8Array(0),
+    },
+  })
+  return actionRes;
 }

@@ -9,12 +9,13 @@ import {
   channelIdFromString,
   channelIdToString,
 } from '../utils/perun-wallet-wrapper/translator'
-import { interval } from 'rxjs'
+// import { interval } from 'rxjs'
 import { mkSimpleChannelServiceClient } from '../utils/perun-wallet-wrapper/client'
 import { bytes } from '@ckb-lumos/codec'
 import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunPersistorService from '../services/perun/persistor'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
+
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
@@ -62,27 +63,27 @@ export default class PerunController {
     logger.info('PerunController: mount-----PerunController-----')
     this.registerHandlers()
 
-    interval(20000).subscribe(async () => {
-      try {
-        // const res = await PerunController.serviceClient.restoreChannels(new Uint8Array([]))
-        // if (res.accepted) {
-        //   for (const channel of channels) {
-        //     const perunChannel = PerunChannelEntity.fromObject({
-        //       channelId: channelIdToString(new Uint8Array(channel.id.data)),
-        //       allocation: channel.allocation,
-        //       data: channel.data,
-        //       isFinal: channel.isFinal,
-        //       version: channel.version.toString(),
-        //     })
-        //     await PerunPersistorService.updateChannel(perunChannel)
-        //     const res = await PerunPersistorService.getChannels()
-        //     PerunChannelSubject.next(res)
-        //   }
-        // }
-      } catch (err) {
-        logger.warn(`restoreChannels error: ${err}`)
-      }
-    })
+    // interval(20000).subscribe(async () => {
+    //   try {
+    //     // const res = await PerunController.serviceClient.restoreChannels(new Uint8Array([]))
+    //     // if (res.accepted) {
+    //     //   for (const channel of channels) {
+    //     //     const perunChannel = PerunChannelEntity.fromObject({
+    //     //       channelId: channelIdToString(new Uint8Array(channel.id.data)),
+    //     //       allocation: channel.allocation,
+    //     //       data: channel.data,
+    //     //       isFinal: channel.isFinal,
+    //     //       version: channel.version.toString(),
+    //     //     })
+    //     //     await PerunPersistorService.updateChannel(perunChannel)
+    //     //     const res = await PerunPersistorService.getChannels()
+    //     //     PerunChannelSubject.next(res)
+    //     //   }
+    //     // }
+    //   } catch (err) {
+    //     logger.warn(`restoreChannels error: ${err}`)
+    //   }
+    // })
   }
 
   private registerHandlers = () => {
@@ -110,19 +111,30 @@ export default class PerunController {
   public perunServiceAction(params: Controller.Params.PerunServiceActionParams): Promise<Controller.Response> {
     logger.info('PerunController: perunServiceAction-----PerunController-----', params.type)
     switch (params.type) {
+      case 'startup':
+        return this.startupChannelServiceRunner(params.payload);
       case 'open':
-        return this.openChannel(params.payload as Controller.Params.OpenChannelParams)
+        return this.openChannel(params.payload)
       case 'update':
-        return this.updateChannel(params.payload as Controller.Params.UpdateChannelParams)
+        return this.updateChannel(params.payload)
       case 'close':
-        return this.closeChannel(params.payload as Controller.Params.CloseChannelParams)
+        return this.closeChannel(params.payload)
       case 'get':
-        return this.getChannels(params.payload as Controller.Params.GetChannelsParams)
+        return this.getChannels(params.payload)
       case 'restore':
-        return this.restoreChannels(params.payload as Controller.Params.RestoreChannelsParams)
+        return this.restoreChannels(params.payload)
       default:
         return Promise.reject(new Error('Invalid perun service action type'))
     }
+  }
+
+  async startupChannelServiceRunner(opt: Controller.Params.PerunChannelServiceRunnerStartupsParams) {
+    const flag = await PerunService.getInstance().startChannelServiceRunner(opt)
+    return {
+      status: flag ? ResponseCode.Success : ResponseCode.Fail,
+      result: flag,
+      message: flag ? "" : "Failed to start PerunChannelServiceRunner"
+    } as Controller.Response
   }
 
   async openChannel(params: Controller.Params.OpenChannelParams): Promise<Controller.Response> {

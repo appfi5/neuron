@@ -15,7 +15,15 @@ export default class PerunService {
 
     return PerunService.instance
   }
-
+  public async startChannelServiceRunner(opt: Controller.Params.PerunChannelServiceRunnerStartupsParams) {
+    try {
+      await PerunServiceRunner.getInstance().startChannelServiceRunner(opt)
+      return true;
+    } catch (e) {
+      logger.error("Faild to start PerunChannelServiceRunner", e)
+    }
+    return false;
+  }
   // Start the GRPC server hosting the wallet-backend API.
   public async start() {
     logger.info('Starting PerunService runner')

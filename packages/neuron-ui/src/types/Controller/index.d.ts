@@ -212,10 +212,19 @@ declare namespace Controller {
   interface GetChannelParams {
     requester: Uint8Array
   }
-  interface PerunServiceActionParams {
-    type: 'open' | 'update' | 'close' | 'get' | 'restore'
-    payload: OpenChannelParams | UpdateChannelParams | CloseChannelParams | GetChannelParams | RestoreChannelsParams
+  type PerunChannelServiceRunnerStartupsParams = {
+    network: "testnet" | "mainnet"
+    publicKey: string;
   }
+  type PerunServiceActionParams =
+    | { type: "startup", payload: PerunChannelServiceRunnerStartupsParams }
+    | { type: "shutdown" }
+    | { type: "open", payload: OpenChannelParams }
+    | { type: "update", payload: UpdateChannelParams }
+    | { type: "close", payload: CloseChannelParams }
+    | { type: "get", payload: GetChannelParams }
+    | { type: "restore", payload: RestoreChannelsParams }
+
   interface RespondPerunRequestParams {
     type: 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
     response: { rejected?: { reason: string }; data: any }

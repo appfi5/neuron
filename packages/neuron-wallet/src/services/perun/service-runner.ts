@@ -1,6 +1,6 @@
 import crypto from 'crypto'
-
-import { ChildProcess, fork } from 'child_process'
+import env from '../../env'
+import { ChildProcess, fork, spawn } from 'child_process'
 import fs from 'fs'
 import logger from '../../utils/logger'
 import { IPCMessageRequest, IPCMessageResponse } from './server/wallet-backend'
@@ -18,6 +18,41 @@ import { TransactionsService } from '../tx'
 import NetworksService from '../networks'
 import { LightRPC } from 'src/utils/ckb-rpc'
 import { NetworkType } from '../../models/network'
+import generateConfigFiles, { ConfigFileOptions } from './configFiles'
+import SettingsService from '../settings'
+
+const { app } = env
+
+const platform = (): string => {
+  switch (process.platform) {
+    case 'win32':
+      return 'win'
+    case 'linux':
+      return 'linux'
+    case 'darwin':
+      return 'mac'
+    default:
+      return ''
+  }
+}
+
+const binaryPath = (): string => {
+  return app.isPackaged ? path.join(path.dirname(app.getAppPath()), '..', './bin') : path.join(__dirname, '../../bin')
+}
+const channelServiceRunnerBinary = (): string => {
+  const binary = app.isPackaged ? path.resolve(binaryPath(), './channel-service-runner') : path.resolve(binaryPath(), `./${platform()}`, './channel-service-runner')
+  switch (platform()) {
+    case 'win':
+      return binary + '.exe'
+    // case 'mac':
+    //   if (app.isPackaged) {
+    //     return binary
+    //   }
+    //   return `${binary}-${process.arch === 'arm64' ? 'arm64' : 'x64'}`
+    default:
+      return binary
+  }
+}
 
 // Architecture overview:
 //
@@ -26,6 +61,8 @@ export class PerunServiceRunner {
   private static instance: PerunServiceRunner
 
   protected runnerProcess?: ChildProcess
+
+  protected channelServiceRunner: ChildProcess | null = null
 
   private logStream?: fs.WriteStream
 
@@ -294,7 +331,7 @@ export class PerunServiceRunner {
           logger.info('TIP:', rpcTip)
           // const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
           const rpcTx = network.type === NetworkType.Light
-           // light rpc did't include the tx of peer A user
+            // light rpc did't include the tx of peer A user
             ? await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus
             : await rpcService.getTransaction(input.previousOutput.txHash)
           logger.info('RPC-TX:', rpcTx)
@@ -380,6 +417,75 @@ export class PerunServiceRunner {
 
   async stop() {
     this.runnerProcess?.kill()
+  }
+
+  // channel service runner
+
+  async startChannelServiceRunner(opt: ConfigFileOptions) {
+    if (this.channelServiceRunner) {
+      logger.info('ChannelServiceRunner is already running')
+      return
+    }
+
+    const { config, contractCellDeps, systemScripts } = generateConfigFiles(opt)
+
+    const perunFolderPath = SettingsService.getInstance().getPeurnDataFolderPath();
+    const pathWithNetwork = path.join(perunFolderPath, opt.network);
+    fs.mkdirSync(pathWithNetwork, { recursive: true });
+
+    const file_config_path = path.join(pathWithNetwork, 'config.json');
+    fs.writeFileSync(file_config_path, JSON.stringify(config, null, 2));
+
+    const file_contractCellDeps_path = path.join(pathWithNetwork, 'contracts_cell_deps.json');
+    fs.writeFileSync(file_contractCellDeps_path, JSON.stringify(contractCellDeps, null, 2));
+
+    const file_systemScripts_path = path.join(pathWithNetwork, 'system_scripts.json');
+    fs.writeFileSync(file_systemScripts_path, JSON.stringify(systemScripts, null, 2));
+    console.log("args", [
+      // --config           config.json
+      '--config',
+      file_config_path,
+      // --system_scripts   default_scripts.json
+      '--system_scripts',
+      file_systemScripts_path,
+      // --migration_data   contracts_cell_deps.json
+      '--migration_data',
+      file_contractCellDeps_path,
+    ].join(" "))
+    const scrProcess = spawn(channelServiceRunnerBinary(), [
+      // --config           config.json
+      '--config',
+      `"${file_config_path}"`,
+      // --system_scripts   default_scripts.json
+      '--system_scripts',
+      `"${file_systemScripts_path}"`,
+      // --migration_data   contracts_cell_deps.json
+      '--migration_data',
+      `"${file_contractCellDeps_path}"`,
+    ])
+
+    scrProcess.stderr?.on('data', data => {
+      logger.error('Perun Service Runner:\tChannelServiceRunner fail:', data.toString())
+    })
+
+    scrProcess.on("error", error => {
+      logger.error('Perun Service Runner:\tChannelServiceRunner fail:', error)
+    })
+
+    scrProcess.once("close", () => {
+      logger.info('Perun Service Runner:\tChannelServiceRunner closed')
+      this.channelServiceRunner = null;
+    })
+  }
+
+  async stopChannelServiceRunner() {
+    if (!this.channelServiceRunner) {
+      logger.info('ChannelServiceRunner is not running')
+      return
+    }
+
+    this.channelServiceRunner.kill()
+    // this.channelServiceRunner = null
   }
 
   // TODO: CKBNode probably executes its starting twice.

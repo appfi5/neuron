@@ -17,6 +17,7 @@ const settingKeys = {
   ckbDataPath: 'ckbDataPath',
   nodeDataPath: 'nodeDataPath',
   lockWindow: 'lockWindow',
+  perunDataFolderPath: 'perunDataFolderPath',
 }
 
 export default class SettingsService extends Store {
@@ -131,6 +132,9 @@ export default class SettingsService extends Store {
     if (!this.getNodeDataPath(LIGHT_CLIENT_MAINNET) || !this.getNodeDataPath('ckb')) {
       this.migrateDataPath()
     }
+
+    this.mirgratePerunDataPath();
+
     if (this.isFirstSync === undefined) {
       this.isFirstSync = !fs.existsSync(path.join(this.getNodeDataPath(), 'ckb.toml'))
     }
@@ -158,5 +162,16 @@ export default class SettingsService extends Store {
       `${settingKeys.nodeDataPath}_${LIGHT_CLIENT_MAINNET}`,
       path.resolve(app.getPath('userData'), 'chains/light/mainnet')
     )
+  }
+
+  mirgratePerunDataPath() {
+    const currentPerunDataFolderPath = this.readSync(settingKeys.perunDataFolderPath)
+    if (!currentPerunDataFolderPath) {
+      this.writeSync(settingKeys.perunDataFolderPath, path.resolve(app.getPath('userData'), 'perun'))
+    }
+  }
+
+  getPeurnDataFolderPath() {
+    return this.readSync(settingKeys.perunDataFolderPath) as string
   }
 }

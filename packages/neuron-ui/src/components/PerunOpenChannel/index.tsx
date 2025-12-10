@@ -29,8 +29,8 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
 
   const [formData, setFormData] = useState({
     myAmount: 123,
-    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqd4a33y7unx66rqh03vwngh3e4t0x6yrhcd9sfns',
-    peerPubKey: '0x02a5b7bb6196db5edcd38c55de70ae61d4bc52cd8b1195cfa6278ca43c11a35ab3',
+    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqvujnwcyyexhcsddzu74yks6ytchq26y0svu4675',
+    peerPubKey: '0x02372431f7ce5e18e100e56d6d8e74145ec00ad59878887a353aca8ca52e64119c',
     peerAmount: 125,
   })
 

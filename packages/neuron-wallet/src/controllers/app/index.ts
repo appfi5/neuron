@@ -66,7 +66,12 @@ export default class AppController {
     if (env.isTestMode) {
       return
     }
-    await Promise.all([stopCkbNode(), CKBLightRunner.getInstance().stop(), PerunServiceRunner.getInstance().stop()])
+    await Promise.all([
+      stopCkbNode(),
+      CKBLightRunner.getInstance().stop(),
+      PerunServiceRunner.getInstance().stop(),
+      PerunServiceRunner.getInstance().stopChannelServiceRunner(),
+    ])
   }
 
   public registerChannels(win: BrowserWindow, channels: string[]) {
