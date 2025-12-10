@@ -13,9 +13,9 @@ import Transaction from '../../models/chain/transaction'
 import Input from '../../models/chain/input'
 import CellsService from '../../services/cells'
 import OutPoint from '../../models/chain/out-point'
-import RpcService from '../../services/rpc-service'
+// import RpcService from '../../services/rpc-service'
 // import { TransactionsService } from '../tx'
-import NetworksService from '../networks'
+// import NetworksService from '../networks'
 // import { LightRPC } from 'src/utils/ckb-rpc'
 // import { NetworkType } from '../../models/network'
 import generateConfigFiles, { ConfigFileOptions } from './configFiles'
@@ -308,8 +308,8 @@ export class PerunServiceRunner {
       logger.info('PerunServiceRunner received signTransactionRequest:sdkTx', sdkTx)
       // Fetch live cells from txs input-outpoints.
       let resolvedInputs = []
-      const network = NetworksService.getInstance().getCurrent()
-      const rpcService = new RpcService(network.remote, network.type)
+      // const network = NetworksService.getInstance().getCurrent()
+      // const rpcService = new RpcService(network.remote, network.type)
       for (const [idx, input] of sdkTx.txView.inputs.entries()) {
         let typedInput = input as { previousOutput: { txHash: string; index: string }; since: string }
         logger.info('Fetching live cell', input.previousOutput)
