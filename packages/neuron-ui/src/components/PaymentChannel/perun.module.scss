@@ -346,3 +346,30 @@
   margin: 8px 0 16px;
   flex-wrap: wrap;
 }
+
+
+.startView {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  background-color: #fff;
+  border-radius: 16px;
+
+  .pubkeyContainer {
+    width: 648px;
+
+    .title {
+      grid-area: label;
+      font-size: 14px;
+      line-height: 20px;
+      color: var(--secondary-text-color);
+      margin-bottom: 8px;
+    }
+  }
+
+  .startButton {
+    margin-top: 40px;
+  }
+}

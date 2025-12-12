@@ -13,7 +13,7 @@ import {
   signRawMessage,
   signTransactionOnly,
 } from 'services/remote'
-import { type CKBComponents } from '@ckb-lumos/lumos/rpc'
+
 import { ControllerResponse } from 'services/remote/remoteApiWrapper'
 import {
   bytesToHex,
@@ -21,7 +21,6 @@ import {
   isMainnet as isMainnetUtil,
   isSuccessResponse,
   errorFormatter,
-  bigIntStringToHex,
   scriptToAddress,
 } from 'utils'
 import { useDispatch } from 'states'
@@ -32,6 +31,8 @@ import Dialog from 'widgets/Dialog'
 import { PasswordDialog } from 'components/SignAndVerify'
 import { deletePerunRequest } from 'states/stateProvider/actionCreators'
 import styles from './perunCreationRequestList.module.scss'
+import { getCompatibleTx } from './utils'
+import { hexToUint8Array } from 'utils/bufferConvert'
 
 export const PerunCreationRequestList = ({
   requests,
@@ -62,10 +63,22 @@ export const PerunCreationRequestList = ({
 
   const renderPerunRequest = (perunRequest: State.PerunRequest) => {
     switch (perunRequest.type) {
+      case 'openChannelRequest': {
+        console.log("PerunCreationRequestList open channel", perunRequest.request);
+        return (
+          <>
+            <h3>receive a open channel request</h3>
+            <p>{`Channel ID: `}</p>
+            <p>{`State: `}</p>
+            <p>{`Version: `}</p>
+            <p>{`Balances: A: xx, B: xx`}</p>
+            <p>{`IsFinal: boolean`}</p>
+          </>
+        )
+      }
       case 'SignMessage': {
         const request = perunRequest.request as State.PerunSignMessageRequest
-        const addressBytes = request.pubkey.data
-        const address = new TextDecoder().decode(new Uint8Array(addressBytes))
+        const address = new TextDecoder().decode(hexToUint8Array(request.pubkey))
         // const content = bytesToHex(new Uint8Array(request.request.data.data))
         return (
           <h2 className={styles.content}>
@@ -100,6 +113,13 @@ export const PerunCreationRequestList = ({
               <p className={styles.amount}>34,000.1</p> */}
             {perunRequest.type}
           </h2>
+        )
+      }
+      case "UpdateNotification": {
+        console.log('UpdateNotification request: ', perunRequest.request)
+        debugger;
+        return (
+          <div>UpdateNotification??</div>
         )
       }
       // case 'UpdateNotification': {
@@ -143,11 +163,10 @@ export const PerunCreationRequestList = ({
   const handleSigningRequest = async (password: string) => {
     const handleSignMessage = async (perunRequest: State.PerunRequest) => {
       const request = perunRequest.request as State.PerunSignMessageRequest
-      const addressBytes = request.pubkey.data
       // Uint8Array -> String
-      const address = new TextDecoder().decode(new Uint8Array(addressBytes))
+      const address = new TextDecoder().decode(hexToUint8Array(request.pubkey))
       console.log('signing request for address----------', address)
-      const msgToSign = bytesToHex(new Uint8Array(request.data.data))
+      // const msgToSign = bytesToHex(new Uint8Array(request.data.data))
       // TODO: It would be nice to have a decoder for the Perun encoded messages.
       // We could fetch the channel state here, display it to the user AND update
       // the state cache upon successful signing.
@@ -155,11 +174,11 @@ export const PerunCreationRequestList = ({
       const res: ControllerResponse = await signRawMessage({
         walletID,
         address,
-        message: msgToSign,
+        message: request.data,
         password,
       })
 
-      console.log(`handleSigningRequest: message to sign---------: ${msgToSign}`)
+      // console.log(`handleSigningRequest: message to sign---------: ${msgToSign}`)
 
       if (isSuccessResponse(res)) {
         deletePerunRequest(perunRequest)(dispatch)
@@ -202,56 +221,8 @@ export const PerunCreationRequestList = ({
 
       // Bring into backend compatible JSON format.
       const sdkTx = res.result.transaction
-      const camelToSnakeReplacer = (s: string) => {
-        return s.replace(/([A-Z])/g, '_$1').toLowerCase()
-      }
-      const camelToSnakeCloner = (obj: any, valueModifier: (key: any, value: any) => [any, any]) => {
-        return Object.keys(obj).reduce((acc: any, key) => {
-          const newKey = camelToSnakeReplacer(key)
-          const val = obj[key as keyof CKBComponents.Transaction]
-          if (Array.isArray(val)) {
-            acc[newKey] = val.map((v: any) => {
-              if (typeof v === 'object' && v !== null) {
-                return camelToSnakeCloner(v, valueModifier)
-              }
-              // eslint-disable-next-line @typescript-eslint/no-shadow
-              const [_, modVal] = valueModifier('', v)
-              return modVal
-            })
-          } else if (typeof val === 'object' && val !== null) {
-            acc[newKey] = camelToSnakeCloner(val, valueModifier)
-          } else {
-            const [modKey, modVal] = valueModifier(newKey, val)
-            acc[modKey] = modVal
-          }
-          return acc
-        }, {})
-      }
-      const compatibleTx = camelToSnakeCloner(sdkTx, (key: any, value: any) => {
-        let newValue = value
-        switch (key) {
-          case 'dep_type':
-            newValue = camelToSnakeReplacer(value)
-            break
-          case 'since':
-            newValue = `0x${value}`
-            break
-          case 'input_index':
-            newValue = `0x${value}`
-            break
-          case 'index':
-            newValue = `0x${value}`
-            break
-          case 'capacity':
-            newValue = bigIntStringToHex(value)
-            break
-          case 'version':
-            newValue = `0x${value}`
-            break
-          default:
-        }
-        return [key, newValue]
-      })
+
+      const compatibleTx = getCompatibleTx(sdkTx)
 
       deletePerunRequest(perunRequest)(dispatch)
       await respondPerunRequest({

@@ -3,7 +3,7 @@ import env from '../../env'
 import { ChildProcess, fork, spawn } from 'child_process'
 import fs from 'fs'
 import logger from '../../utils/logger'
-import { IPCMessageRequest, IPCMessageResponse } from './server/wallet-backend'
+import { IPCMessageRequest } from './server/wallet-backend'
 import path from 'path'
 import { WalletBackend } from '../../utils/perun-wallet-wrapper/services'
 import PerunController from '../../controllers/perun'
@@ -21,6 +21,7 @@ import OutPoint from '../../models/chain/out-point'
 import generateConfigFiles, { ConfigFileOptions } from './configFiles'
 import SettingsService from '../settings'
 import { fetchTargetCell } from './fetchCell'
+import { hexToUint8Array } from '../../utils/bufferConvert'
 
 const { app } = env
 
@@ -115,17 +116,18 @@ export class PerunServiceRunner {
   }
 
   // 通过 ipc收到 backend 发来的 message
-  private ipcMessageHandler = (message: { type: IPCMessageRequest; req: unknown }) => {
+  private ipcMessageHandler = (message: { type: IPCMessageRequest; req: unknown, requestId: string }) => {
     // TODO: Properly type the req paramter. E.g. use an indexed type derived from the WalletBackend interface.
+    console.log('receving ipcMessageHandler', message)
     switch (message.type) {
       case 'openChannelRequest':
-        return this.handleOpenChannelRequest(message.req as any)
+        return this.handleOpenChannelRequest(message.req as any, message.requestId)
       case 'updateNotificationRequest':
-        return this.handleUpdateNotificationRequest(message.req as any)
+        return this.handleUpdateNotificationRequest(message.req as any, message.requestId)
       case 'signMessageRequest':
-        return this.handleSignMessageRequest(message.req as any)
+        return this.handleSignMessageRequest(message.req as any, message.requestId)
       case 'signTransactionRequest':
-        return this.handleSignTransactionRequest(message.req as any)
+        return this.handleSignTransactionRequest(message.req as any, message.requestId)
       default: {
         logger.info('Unknown IPC message type', message.type)
       }
@@ -133,10 +135,26 @@ export class PerunServiceRunner {
     logger.info('PerunServiceRunner received unexpected IPC message', message)
   }
 
-  private ipcReturn(type: IPCMessageResponse, req: unknown) {
-    logger.info('runner: ipcReturn-----------', type, req)
+  // private ipcReturn(type: string, req: unknown, requestId?: string) {
+  //   logger.info('runner: ipcReturn-----------', type, requestId, req)
+  //   return new Promise<void>((resolve, reject) => {
+  //     this.runnerProcess?.send({ type, req, requestId }, error => {
+  //       if (error) {
+  //         logger.error('PerunServiceRunner failed to send IPC message', error)
+  //         reject(error)
+  //       } else {
+  //         logger.info('PerunServiceRunner successfully sent IPC message')
+  //         resolve()
+  //       }
+  //     })
+  //   })
+  // }
+
+  // todo IPCMessageRequest
+  private ipcResponse(type: IPCMessageRequest, requestId: string, req: unknown) {
+    logger.info('runner: ipcResponse-----------', type, requestId, req)
     return new Promise<void>((resolve, reject) => {
-      this.runnerProcess?.send({ type, req }, error => {
+      this.runnerProcess?.send({ type, req, requestId }, error => {
         if (error) {
           logger.error('PerunServiceRunner failed to send IPC message', error)
           reject(error)
@@ -148,52 +166,83 @@ export class PerunServiceRunner {
     })
   }
 
-  private handleOpenChannelRequest(_req: Parameters<WalletBackend<{}>['openChannelRequest']>[0]) {
-    // Validate the request.
-    // this.validateOpenChannelRequest(req)
-    logger.info('runner: handleOpenChannelRequest-----------PerunServiceRunner received openChannelRequest')
-    const nonceShare = new Uint8Array(32)
+  private handleOpenChannelRequest(_req: Parameters<WalletBackend<{}>['openChannelRequest']>[0], requestId: string) {
+    type ResponseType = Awaited<ReturnType<WalletBackend<{}>['openChannelRequest']>>
+    return new Promise<void>((resolve) => {
+      // if (
+      //   !PerunController.emiter.emit('perun-request', {
+      //     type: 'openChannelRequest',
+      //     request: _req,
+      //   })
+      // ) {
+      //   this.ipcResponse('openChannelRequest', { rejected: { reason: 'offline' } }, requestId)
+      //   return reject(new Error('Failed to send perun request, no listener registered'))
+      // }
 
-    // 处理这个，比如让用户通过请求？？
-    crypto.getRandomValues(nonceShare)
-    // goto file:///./server/wallet-backend.ts#L40
-    this.ipcReturn('openChannelResponse', {
-      nonceShare,
-    })
-  }
+      // PerunController.emiter.once('perun-response',(res: Controller.Params.RespondPerunRequestParams) => {
 
-  private handleUpdateNotificationRequest(req: Parameters<WalletBackend<{}>['updateNotificationRequest']>[0]) {
-    logger.info('PerunServiceRunner received updateNotificationRequest', req)
-    return new Promise<void>((resolve, reject) => {
-      if (
-        !PerunController.emiter.emit('perun-request', {
-          type: 'UpdateNotification',
-          request: req,
-        })
-      ) {
-        return reject(new Error('Failed to send perun request, no listener registered'))
+      // })
+      // const responseData: ResponseType = {
+      //   rejected: {
+      //     reason: "test"
+      //   }
+      // }
+      // // reject test
+      // this.ipcResponse('openChannelRequest', responseData, requestId)
+
+      // Validate the request.
+      // this.validateOpenChannelRequest(req)
+      logger.info('runner: handleOpenChannelRequest-----------PerunServiceRunner received openChannelRequest', _req);
+      const nonceShare = new Uint8Array(32)
+
+      // 处理这个，比如让用户通过请求？？
+      crypto.getRandomValues(nonceShare)
+      const responseData: ResponseType = {
+        nonceShare
       }
+      // goto file:///./server/wallet-backend.ts#L40
+      this.ipcResponse('openChannelRequest', requestId, responseData)
+      resolve();
+    })
 
-      PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
-        console.log('PerunServiceRunner received updateNotificationResponse', res)
-        if (res.response.rejected) {
-          this.ipcReturn('updateNotificationResponse', {
-            rejected: {
-              reason: res.response.rejected.reason,
-            },
-          })
-          return resolve()
-        }
+  }
 
-        this.ipcReturn('updateNotificationResponse', {
-          accepted: res.response.data,
-        })
-        resolve()
-      })
+  private handleUpdateNotificationRequest(req: Parameters<WalletBackend<{}>['updateNotificationRequest']>[0], requestId: string) {
+    logger.info('PerunServiceRunner received updateNotificationRequest', req)
+    return new Promise<void>((resolve) => {
+      type ResponseType = Awaited<ReturnType<WalletBackend<{}>['openChannelRequest']>>
+      this.ipcResponse('updateNotificationRequest', requestId, { accepted: true } as ResponseType)
+      resolve()
+
+      // if (
+      //   !PerunController.emiter.emit('perun-request', {
+      //     type: 'UpdateNotification',
+      //     request: req,
+      //   })
+      // ) {
+      //   return reject(new Error('Failed to send perun request, no listener registered'))
+      // }
+
+      // PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
+      //   console.log('PerunServiceRunner received updateNotificationResponse', res)
+      //   if (res.response.rejected) {
+      //     this.ipcReturn('updateNotificationResponse', {
+      //       rejected: {
+      //         reason: res.response.rejected.reason,
+      //       },
+      //     })
+      //     return resolve()
+      //   }
+
+      //   this.ipcReturn('updateNotificationResponse', {
+      //     accepted: res.response.data,
+      //   })
+      //   resolve()
+      // })
     })
   }
 
-  private handleSignMessageRequest(req: Parameters<WalletBackend<{}>['signMessageRequest']>[0]) {
+  private handleSignMessageRequest(req: Parameters<WalletBackend<{}>['signMessageRequest']>[0], requestId: string) {
     logger.info('runner: handleSignMessageRequest-----------', req)
     return new Promise<void>((resolve, reject) => {
       if (
@@ -207,7 +256,7 @@ export class PerunServiceRunner {
 
       PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
         if (res.response.rejected) {
-          this.ipcReturn('signMessageResponse', {
+          this.ipcResponse('signMessageRequest', requestId, {
             rejected: {
               reason: res.response.rejected.reason,
             },
@@ -259,7 +308,7 @@ export class PerunServiceRunner {
         //
         // We always append the marker byte and only pad with zero bytes if the signature is shorter than 72 bytes.
         const paddedSig = `${derSig}${'ff'}${'00'.repeat(72 - derSig.slice(2).length / 2)}`
-        this.ipcReturn('signMessageResponse', {
+        this.ipcResponse('signMessageRequest', requestId, {
           signature: paddedSig,
         })
         resolve()
@@ -267,7 +316,12 @@ export class PerunServiceRunner {
     })
   }
 
-  private handleSignTransactionRequest(req: Parameters<WalletBackend<{}>['signTransactionRequest']>[0]) {
+  private handleSignTransactionRequest(_req: Parameters<WalletBackend<{}>['signTransactionRequest']>[0], requestId: string) {
+    // logger.info('PerunServiceRunner received signTransactionRequest prev', _req)
+    const req = {
+      identifier: new TextDecoder('utf-8').decode(hexToUint8Array(_req.identifier as unknown as string)),
+      transaction: new TextDecoder('utf-8').decode(hexToUint8Array(_req.transaction as unknown as string)),
+    }
     return new Promise<void>(async (resolve, reject) => {
       // 这里看出来是谁的请求
       // 是 开？ 是关？ 是更新？
@@ -397,7 +451,7 @@ export class PerunServiceRunner {
 
       PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
         if (res.response.rejected) {
-          this.ipcReturn('signTransactionResponse', {
+          this.ipcResponse('signTransactionRequest', requestId, {
             rejected: {
               reason: res.response.rejected.reason,
             },
@@ -405,7 +459,7 @@ export class PerunServiceRunner {
           return resolve()
         }
         const signedTx = res.response.data
-        this.ipcReturn('signTransactionResponse', { transaction: signedTx })
+        this.ipcResponse('signTransactionRequest', requestId, { transaction: signedTx })
         resolve()
       })
     })

@@ -346,12 +346,14 @@ declare namespace State {
   }
 
   interface PerunSignMessageRequest {
-    pubkey: {
-      data: Uint8Array
-    }
-    data: {
-      data: Uint8Array
-    }
+    // pubkey: {
+    //   data: Uint8Array
+    // }
+    pubkey: `0x${string}`
+    // data: {
+    //   data: Uint8Array
+    // }
+    data: `0x${string}`
   }
 
   interface PerunSignTransactionRequest {
@@ -360,7 +362,8 @@ declare namespace State {
   }
 
   interface PerunRequest {
-    type: 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
+    // todo align with IPCMessageRequest
+    type: 'openChannelRequest' | 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
     request?: PerunSignMessageRequest | PerunSignTransactionRequest
     timestamp: number
   }

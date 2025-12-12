@@ -96,6 +96,11 @@ $active-primary-color: color-mix(in srgb, #000000 40%, var(--primary-color));
     }
   }
 
+  &[data-type='danger'] {
+    background-color: var(--error-color);
+    color: var(--primary-text-color);
+  }
+
   &[disabled] {
     opacity: 0.5;
     box-shadow: none !important;

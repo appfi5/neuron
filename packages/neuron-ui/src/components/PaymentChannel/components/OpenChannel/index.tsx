@@ -17,8 +17,16 @@ import TextField from 'widgets/TextField'
 import Dialog from 'widgets/Dialog'
 import Alert from 'widgets/Alert'
 import styles from './perunOpenChannel.module.scss'
+import { PeerUser, TradePayload } from 'components/PaymentChannel/api'
 
-const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?: () => void; myPubKey: string }) => {
+type PerunOpenChannelProps = {
+  show: boolean
+  onClose: () => void
+  myPubKey: string
+  onRequest: (peerUser: PeerUser, payload: [TradePayload, TradePayload]) => void
+}
+export default function PerunOpenChannel(props: PerunOpenChannelProps) {
+  const { show, onClose, myPubKey, onRequest } = props;
   const [t] = useTranslation()
 
   const {
@@ -28,10 +36,10 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
   } = useGlobalState()
 
   const [formData, setFormData] = useState({
-    myAmount: 123,
-    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqvujnwcyyexhcsddzu74yks6ytchq26y0svu4675',
-    peerPubKey: '0x02372431f7ce5e18e100e56d6d8e74145ec00ad59878887a353aca8ca52e64119c',
-    peerAmount: 125,
+    myAmount: 125,
+    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqd4a33y7unx66rqh03vwngh3e4t0x6yrhcd9sfns',
+    peerPubKey: '0x02a5b7bb6196db5edcd38c55de70ae61d4bc52cd8b1195cfa6278ca43c11a35ab3',
+    peerAmount: 123,
   })
 
   const [formErrors, setFormErrors] = useState({
@@ -88,22 +96,34 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
   const handleOpenChannel = () => {
     const { myAmount, peerAddress, peerPubKey, peerAmount } = formData
 
-    const myBalanceShannon = equalNumPaddedHex(BigInt(myAmount * 1e8))
-    const peerBalanceShannon = equalNumPaddedHex(BigInt(peerAmount * 1e8))
 
-    perunServiceAction({
-      type: 'open',
-      payload: {
-        me: getParticipantByAddressAndPubkey(wallet.addresses[0].address, myPubKey),
-        peer: getParticipantByAddressAndPubkey(peerAddress, peerPubKey),
-        balances: [bytes.bytify(myBalanceShannon), bytes.bytify(peerBalanceShannon)],
-        challengeDuration: Number(10000),
-      },
-    }).then(actionRes => {
-      if (!isSuccessResponse(actionRes)) {
-        showErrorMessage('Error', errorFormatter(actionRes.message, t))
-      }
-    })
+
+
+    onRequest(
+      { address: peerAddress, publicKey: peerPubKey },
+      [
+        { type: null, amount: myAmount },
+        { type: null, amount: peerAmount },
+      ]
+    )
+
+    // const myBalanceShannon = equalNumPaddedHex(BigInt(myAmount * 1e8))
+    // const peerBalanceShannon = equalNumPaddedHex(BigInt(peerAmount * 1e8))
+
+    // perunServiceAction({
+    //   type: 'open',
+    //   payload: {
+    //     me: getParticipantByAddressAndPubkey(wallet.addresses[0].address, myPubKey),
+    //     peer: getParticipantByAddressAndPubkey(peerAddress, peerPubKey),
+    //     balances: [bytes.bytify(myBalanceShannon), bytes.bytify(peerBalanceShannon)],
+    //     challengeDuration: Number(100000),
+    //   },
+    // }).then(actionRes => {
+    //   if (!isSuccessResponse(actionRes)) {
+    //     showErrorMessage('Error', errorFormatter(actionRes.message, t))
+    //     return;
+    //   }
+    // })
 
     onClose?.()
   }
@@ -123,7 +143,7 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
         </Alert>
 
         <div className={styles.mainContent}>
-          <TextField label="My Public Key" disabled value={myPubKey} />
+          {/* <TextField label="My Public Key" disabled value={myPubKey} /> */}
           <TextField
             field="myAmount"
             label="My Amount (CKB)"
@@ -158,7 +178,3 @@ const PerunOpenChannel = ({ show, onClose, myPubKey }: { show: boolean; onClose?
     </Dialog>
   )
 }
-
-PerunOpenChannel.displayName = 'PerunOpenChannel'
-
-export default PerunOpenChannel

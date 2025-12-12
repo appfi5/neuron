@@ -15,7 +15,7 @@ import { bytes } from '@ckb-lumos/codec'
 import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunPersistorService from '../services/perun/persistor'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
-
+import { mol } from "@ckb-ccc/core"
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
@@ -149,8 +149,9 @@ export default class PerunController {
         ],
       }),
     })
+
     const res = await PerunController.serviceClient
-      .openChannel(params.me, params.peer, alloc, params.challengeDuration, new Uint8Array(0))
+      .openChannel(params.me, params.peer, alloc, params.challengeDuration, new Uint8Array(mol.Uint8.encode(123)))
       .catch(e => {
         logger.info('PerunController: openChannel-----error-----', e)
         return {
@@ -180,9 +181,11 @@ export default class PerunController {
   }
 
   async updateChannel(params: Controller.Params.UpdateChannelParams): Promise<Controller.Response> {
+    console.log("before update", params.channelId, params.index, params.amount)
     const res = await PerunController.serviceClient
       .updateChannel(channelIdFromString(params.channelId), params.index, params.amount)
       .catch(e => {
+        console.log("1", e);
         return {
           rejected: {
             reason: e.message,
@@ -190,7 +193,7 @@ export default class PerunController {
           update: undefined,
         }
       })
-
+    console.log("2", res);
     if (res.rejected) {
       return {
         status: ResponseCode.Fail,
@@ -228,7 +231,7 @@ export default class PerunController {
 
   async getChannels(params: Controller.Params.GetChannelsParams): Promise<Controller.Response> {
     const res = await PerunController.serviceClient.getChannels(params.requester)
-    logger.info('PerunController: getChannels----------res:', res)
+    // logger.info('PerunController: getChannels----------res:', res)
 
     if (res.rejected) {
       return {

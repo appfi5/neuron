@@ -2,6 +2,11 @@
 @import './color.scss';
 @import './mixin.scss';
 
+// imitate tailwindcss;
+@import "./imitate-tailwind/flex.scss";
+@import "./imitate-tailwind/typography.scss";
+@import "./imitate-tailwind/spacing.scss";
+
 * {
   outline: none !important;
   -webkit-tap-highlight-color: none !important;
@@ -133,9 +138,11 @@ body {
 .ms-Dropdown-title {
   border-color: #000 !important;
 }
+
 .ms-Dropdown-item {
   color: #000 !important;
 }
+
 .ms-Dropdown-container {
   label {
     font-size: 0.875rem !important;
@@ -146,10 +153,12 @@ body {
 // hack search field
 .ms-SearchBox {
   height: 26px;
+
   input {
     font-size: 0.75rem;
   }
 }
+
 .ms-SearchBox.is-active,
 .ms-TextField.is-active {
   border-color: var(--nervos-green) !important;
@@ -174,12 +183,15 @@ body {
     top: 4px;
     left: 3px;
   }
+
   &::after {
     top: 9px !important;
     left: 8px !important;
   }
 }
+
 .ms-ChoiceField-field.is-checked {
+
   &::before,
   &::after {
     border-color: var(--nervos-green);
@@ -253,14 +265,17 @@ body {
   height: 6px;
   width: 6px;
 }
+
 ::-webkit-scrollbar-corner {
   background-color: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   width: 6px;
   background: #cccccc;
   border-radius: 48px;
 }
+
 @media (prefers-color-scheme: dark) {
   ::-webkit-scrollbar-thumb {
     background: #000;
@@ -268,3 +283,17 @@ body {
     border-radius: 48px;
   }
 }
+
+// imitate tailwindcss
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-secondary {
+  color: var(--secondary-text-color);
+}
+
+.w-full {
+  width: 100%;
+}
+

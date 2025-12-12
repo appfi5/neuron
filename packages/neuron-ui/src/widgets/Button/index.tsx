@@ -18,7 +18,7 @@ const Button = React.forwardRef(
       loading,
       ...rest
     }: {
-      type?: 'default' | 'cancel' | 'ok' | 'submit' | 'confirm' | 'primary' | 'reset' | 'text' | 'dashed'
+      type?: 'default' | 'cancel' | 'ok' | 'submit' | 'confirm' | 'primary' | 'reset' | 'text' | 'dashed' | 'danger'
       label?: string
       className?: string
       loading?: boolean
