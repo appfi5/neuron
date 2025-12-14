@@ -9,9 +9,10 @@ const networkMap = {
 } as const
 
 const testnetService = new ccc.ClientPublicTestnet({ url: networkMap.testnet })
+const mainnetService = new ccc.ClientPublicMainnet({ url: networkMap.mainnet })
 
-export async function fetchTargetCell(txhash: string, outputIndex: number) {
-  const txResponse = await testnetService.getTransaction(txhash);
+export async function fetchTargetCell(network: "testnet" | "mainnet", txhash: string, outputIndex: number) {
+  const txResponse = await (network === "testnet" ? testnetService : mainnetService).getTransaction(txhash);
   const tx = txResponse?.transaction;
   if (!tx) {
     return null;

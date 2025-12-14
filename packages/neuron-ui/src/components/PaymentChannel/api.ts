@@ -45,7 +45,7 @@ export async function getChannels(publicKey: string, address: string) {
     payload: {
       requester: getParticipantByAddressAndPubkey(address, publicKey),
     },
-  }) as ControllerResponse<{ channels: { actorIdxs: (0|1)[], states: any[] } }>
+  }) as ControllerResponse<{ channels: { actorIdxs: (0 | 1)[], states: any[] } }>
   if (!isSuccessResponse(actionRes)) {
     return []
   }
@@ -95,20 +95,35 @@ export async function getChannels(publicKey: string, address: string) {
   return channels;
 }
 
-export async function openChannel(publicKey: string, address: string, peerUser: PeerUser, payload: [TradePayload, TradePayload], challengeDuration: number) {
+export async function openChannel(publicKey: string, address: string, peerUser: PerunAPI.PeerUser, payload: [TradePayload, TradePayload], challengeDuration: number) {
   // open channel request will return after both peer user signed transaction
   return perunServiceAction({
     type: 'open',
+    // payload: {
+    //   me: getParticipantByAddressAndPubkey(address, publicKey),
+    //   peer: getParticipantByAddressAndPubkey(peerUser.address, peerUser.publicKey),
+    //   // todo move TradePayload process to main progress
+    //   balances: [
+    //     bytes.bytify(equalNumPaddedHex(BigInt(payload[0].amount * 1e8))),
+    //     bytes.bytify(equalNumPaddedHex(BigInt(payload[1].amount * 1e8))),
+    //   ],
+    //   challengeDuration: Number(challengeDuration),
+    // },
     payload: {
-      me: getParticipantByAddressAndPubkey(address, publicKey),
-      peer: getParticipantByAddressAndPubkey(peerUser.address, peerUser.publicKey),
-      // todo move TradePayload process to main progress
+      me: { publicKey, address },
+      peer: peerUser,
       balances: [
-        bytes.bytify(equalNumPaddedHex(BigInt(payload[0].amount * 1e8))),
-        bytes.bytify(equalNumPaddedHex(BigInt(payload[1].amount * 1e8))),
+        {
+          type: null,
+          balances: [
+            BigInt(payload[0].amount * 1e8).toString(),
+            BigInt(payload[1].amount * 1e8).toString(),
+          ]
+        },
+        // { type: null, balances: [1, 2] }, // udt
       ],
       challengeDuration: Number(challengeDuration),
-    },
+    }
   })
 }
 

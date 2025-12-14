@@ -253,3 +253,19 @@ declare namespace Perun {
   }
 
 }
+
+
+declare namespace PerunAPI {
+  type PeerUser = Perun.ReadableMessage.PeerUser;
+  type Script = { codeHash: string, hashType: string, args: string }
+
+  type OpenChannelParams = {
+    me: PeerUser,
+    peer: PeerUser,
+    balances: Array<{
+      type: null | Script
+      balances: [string, string]
+    }>
+    challengeDuration: number
+  }
+}

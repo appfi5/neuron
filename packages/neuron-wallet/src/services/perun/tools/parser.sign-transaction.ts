@@ -7,20 +7,22 @@ import Transaction from '../../../models/chain/transaction'
 // import RpcService from '../../../services/rpc-service'
 import NetworksService from '../../networks'
 import { fetchTargetCell } from '../fetchCell'
-import { ccc, ClientPublicTestnet, ScriptLike } from '@ckb-ccc/core'
-import { NetworkType } from '../../../models/network'
+import { ccc, ClientPublicMainnet, ClientPublicTestnet, ScriptLike } from '@ckb-ccc/core'
+// import { NetworkType } from '../../../models/network'
+import { LIGHT_CLIENT_TESTNET } from '../../../utils/const'
 
 export async function parseSignTransactionRequest(serializedRequest: Perun.SerializedMessage.SignTransactionRequest) {
 
   const network = NetworksService.getInstance().getCurrent()
-  const isLightClient = network.type === NetworkType.Light
+  // const isLightClient = network.type === NetworkType.Light
+  const isTestnet = network.chain === LIGHT_CLIENT_TESTNET
   // const rpcService = new RpcService(network.remote, network.type)
   console.log("network:", network);
 
   const scriptStr = new TextDecoder("utf-8").decode(Buffer.from(serializedRequest.identifier.data))
   const sdkScript = JSON.parse(scriptStr, snakeCaseToCamelCase) as ScriptLike;
   // todo
-  const address = ccc.Address.fromScript(sdkScript, new ClientPublicTestnet()).toString();
+  const address = ccc.Address.fromScript(sdkScript, isTestnet ? new ClientPublicTestnet() : new ClientPublicMainnet()).toString();
 
   const txStr = new TextDecoder("utf-8").decode(Buffer.from(serializedRequest.transaction.data));
   // TODO: The transaction here has unresolved inputs, which are only referenced by their outpoints.
@@ -32,7 +34,7 @@ export async function parseSignTransactionRequest(serializedRequest: Perun.Seria
   // logger.info('PerunServiceRunner received signTransactionRequest:sdkTx', sdkTx)
   // Fetch live cells from txs input-outpoints.
   let resolvedInputs = []
-  
+
   for (const [idx, input] of sdkTx.txView.inputs.entries()) {
     let typedInput = input as { previousOutput: { txHash: string; index: string }; since: string }
     // logger.info('Fetching live cell', input.previousOutput)
@@ -60,8 +62,8 @@ export async function parseSignTransactionRequest(serializedRequest: Perun.Seria
       //   : await rpcService.getTransaction(input.previousOutput.txHash)
       // const targetCell = rpcTx?.transaction?.outputs[Number(input.previousOutput.index)]
       // logger.info('RPC-TX:', rpcTx)
-      // todo testnet only for now
-      const targetCell = await fetchTargetCell(input.previousOutput.txHash, input.previousOutput.index);
+      // todo Full Node Use RPC Service
+      const targetCell = await fetchTargetCell(isTestnet ? "testnet" : "mainnet", input.previousOutput.txHash, input.previousOutput.index);
       // console.log("iCell", targetCell);
 
       if (targetCell) {

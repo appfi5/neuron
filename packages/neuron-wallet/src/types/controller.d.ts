@@ -77,10 +77,16 @@ declare namespace Controller {
       message: string
     }
     interface OpenChannelParams {
-      me: Uint8Array
-      peer: Uint8Array
-      balances: [Uint8Array, Uint8Array]
+      // me: Uint8Array
+      // peer: Uint8Array
+      // balances: [Uint8Array, Uint8Array]
       challengeDuration: number
+      me: { publicKey: string, address: string },
+      peer: { publicKey: string, address: string },
+      balances: Array<{
+        type: null | { codeHash: string, hashType: string, args: string }
+        balances: [string, string]
+      }>
     }
     interface UpdateChannelParams {
       channelId: string

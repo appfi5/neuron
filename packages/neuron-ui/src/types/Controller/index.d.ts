@@ -219,7 +219,7 @@ declare namespace Controller {
   type PerunServiceActionParams =
     | { type: "startup", payload: PerunChannelServiceRunnerStartupsParams }
     | { type: "shutdown" }
-    | { type: "open", payload: OpenChannelParams }
+    | { type: "open", payload: PerunAPI.OpenChannelParams }
     | { type: "update", payload: UpdateChannelParams }
     | { type: "close", payload: CloseChannelParams }
     | { type: "get", payload: GetChannelParams }

@@ -15,13 +15,19 @@ import { bytes } from '@ckb-lumos/codec'
 import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunPersistorService from '../services/perun/persistor'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
-import { mol } from "@ckb-ccc/core"
+import { ccc, mol } from "@ckb-ccc/core"
+import participant from 'src/services/perun/tools/participant'
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
     return bytes.bytify(add)
   }
   return add
+}
+const equalNumPaddedHex = (num: bigint) => {
+  const hex = num.toString(16)
+  const res = hex.length % 2 === 0 ? hex : `0${hex}`
+  return `0x${res}`
 }
 
 export default class PerunController {
@@ -137,21 +143,34 @@ export default class PerunController {
     } as Controller.Response
   }
 
-  async openChannel(params: Controller.Params.OpenChannelParams): Promise<Controller.Response> {
+  async openChannel(params: PerunAPI.OpenChannelParams): Promise<Controller.Response> {
     logger.info('PerunController: openChannel----------')
+    const { me, peer, balances, challengeDuration } = params;
+    const meRequestId = await participant.encode(me.publicKey, me.address);
+    const peerRequestId = await participant.encode(peer.publicKey, peer.address);
+    const { assets, balances: iBalances } = balances.reduce((obj, item) => {
+      obj.assets.push(item.type ? ccc.Script.from(item.type).toBytes() : new Uint8Array(0))
+      obj.balances.push(
+        item.balances.map(balance => bytes.bytify(equalNumPaddedHex(BigInt(balance)))),
+      )
+      return obj;
+    }, { assets: [] as Uint8Array[], balances: [] as Uint8Array[][] })
     const alloc = Allocation.create({
-      assets: [new Uint8Array(1)],
+      assets: assets,
       balances: Balances.create({
-        balances: [
-          {
-            balance: params.balances,
-          },
-        ],
+        balances: iBalances.map(balance => ({
+          balance
+        }))
+        // balances: [
+        //   {
+        //     balance: params.balances,
+        //   },
+        // ],
       }),
     })
 
     const res = await PerunController.serviceClient
-      .openChannel(params.me, params.peer, alloc, params.challengeDuration, mol.Uint32.encode(123))
+      .openChannel(meRequestId, peerRequestId, alloc, challengeDuration, mol.Uint32.encode(123))
       .catch(e => {
         logger.info('PerunController: openChannel-----error-----', e)
         return {
@@ -169,8 +188,8 @@ export default class PerunController {
       }
     }
     const channelId = channelIdToString(new Uint8Array(res.channelId!))
-    logger.log('Controler Buffer channelId', res.channelId!)
-    logger.log('Controler channelID', channelId)
+    // logger.log('Controler Buffer channelId', res.channelId!)
+    // logger.log('Controler channelID', channelId)
     return {
       status: ResponseCode.Success,
       result: {
