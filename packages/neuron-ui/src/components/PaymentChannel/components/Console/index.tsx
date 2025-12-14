@@ -71,7 +71,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
   const channels = useMemo(() => {
     return patialChannelInfos.map(item => {
-      if(channelMap[item.id]) {
+      if (channelMap[item.id]) {
         return {
           ...item,
           peer: channelMap[item.id].peer,
@@ -252,9 +252,16 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
           openChannel(myPubKey, myAddress, peerUser, payload, 1000)
             .then(res => {
-              console.log("openChannel return", res);
-              debugger
               if (!isSuccessResponse(res)) {
+                // remove from pending channels
+                setPendingChannels(prev => {
+                  return prev.filter(item => item.id !== channelInfo.id)
+                })
+                // remove temp Channel ID
+                setChannelMap(prev => {
+                  delete prev[channelInfo.id];
+                  return { ...prev }
+                })
                 showErrorMessage('Error', errorFormatter(res.message, t))
                 return;
               }

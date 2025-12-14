@@ -20,18 +20,8 @@ const log = (...messages: any[]) => {
 
 const genReqeustId = (prefix: string = '') => `${prefix}_${`${Math.random()}`.slice(2, 8)}`;
 
-const stringifyBuffer = (obj: any) => {
-  return JSON.parse(JSON.stringify(obj, (_, value) => {
-    // if value if Buffer
-    if (value?.type === 'Buffer' && value.data) {
-      return "0x" + Buffer.from(value.data).toString("hex");
-    }
-    return value;
-  }))
-}
-
 const commonHandleResponse = <APIName extends keyof WalletBackend<{}>,>(
-  type: APIName,
+  type: Perun.RequestType,
   requestId: string,
   req: Parameters<WalletBackend<{}>[APIName]>[0],
   responseHandler = (a: any) => a
@@ -43,7 +33,7 @@ const commonHandleResponse = <APIName extends keyof WalletBackend<{}>,>(
       return reject(new Error('Failed to send IPC message'))
     }
     // message from main process
-    const listener = (message: { type: IPCMessageRequest; requestId: string; req: ReponseType }) => {
+    const listener = (message: { type: Perun.RequestType; requestId: string; req: ReponseType }) => {
       if (message.type === type && message.requestId === requestId) {
         log(`resolved: [${type}]`, message);
         resolve(responseHandler(message.req))
@@ -63,7 +53,7 @@ const commonHandleResponse = <APIName extends keyof WalletBackend<{}>,>(
 export class IPCWalletBackend implements WalletBackend<{}> {
 
   openChannelRequest(req: ValidOpenChannelRequest) {
-    return commonHandleResponse('openChannelRequest', genReqeustId('openChannelRequest'), stringifyBuffer(req))
+    return commonHandleResponse<"openChannelRequest">("OpenChannel", genReqeustId('openChannelRequest'), req)
   }
   // openChannelRequest(
   //   req: ValidOpenChannelRequest
@@ -90,7 +80,11 @@ export class IPCWalletBackend implements WalletBackend<{}> {
   //   })
   // }
   updateNotificationRequest(req: UpdateNotificationRequest) {
-    return commonHandleResponse('updateNotificationRequest', genReqeustId('updateNotificationRequest'), req)
+    return commonHandleResponse<"updateNotificationRequest">(
+      "UpdateNotification",
+      genReqeustId('updateNotificationRequest'),
+      req
+    )
   }
   // updateNotificationRequest(req: UpdateNotificationRequest): Promise<{ accepted?: boolean | undefined }> {
   //   return new Promise((resolve, _) => {
@@ -117,12 +111,12 @@ export class IPCWalletBackend implements WalletBackend<{}> {
   // }
 
   signMessageRequest(req: ValidSignMessageRequest<{}>) {
-    return commonHandleResponse(
-      'signMessageRequest',
+    return commonHandleResponse<"signMessageRequest">(
+      "SignMessage",
       genReqeustId('signMessageRequest'),
-      stringifyBuffer(req),
+      req,
       (responseData) => {
-        if(responseData.signature) {
+        if (responseData.signature) {
           responseData.signature = bytes.bytify(responseData.signature)
         }
         return responseData;
@@ -160,12 +154,12 @@ export class IPCWalletBackend implements WalletBackend<{}> {
   // }
 
   signTransactionRequest(req: SignTransactionRequest) {
-    return commonHandleResponse(
-      'signTransactionRequest', 
-      genReqeustId('signTransactionRequest'), 
-      stringifyBuffer(req),
+    return commonHandleResponse<"signTransactionRequest">(
+      "SignTransaction",
+      genReqeustId('signTransactionRequest'),
+      req,
       (responseData) => {
-        if(responseData.transaction) {
+        if (responseData.transaction) {
           responseData.transaction = new TextEncoder().encode(responseData.transaction)
         }
         return responseData;

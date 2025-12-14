@@ -151,7 +151,7 @@ export default class PerunController {
     })
 
     const res = await PerunController.serviceClient
-      .openChannel(params.me, params.peer, alloc, params.challengeDuration, new Uint8Array(mol.Uint8.encode(123)))
+      .openChannel(params.me, params.peer, alloc, params.challengeDuration, mol.Uint32.encode(123))
       .catch(e => {
         logger.info('PerunController: openChannel-----error-----', e)
         return {

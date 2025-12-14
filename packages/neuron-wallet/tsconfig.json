@@ -13,5 +13,5 @@
       "dom"
     ]
   },
-  "include": ["src/**/*", "src/services/.ts"]
+  "include": ["src/**/*", "src/services/.ts", "../../types/*.d.ts"]
 }

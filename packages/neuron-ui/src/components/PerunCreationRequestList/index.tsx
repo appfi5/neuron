@@ -32,23 +32,22 @@ import { PasswordDialog } from 'components/SignAndVerify'
 import { deletePerunRequest } from 'states/stateProvider/actionCreators'
 import styles from './perunCreationRequestList.module.scss'
 import { getCompatibleTx } from './utils'
-import { hexToUint8Array } from 'utils/bufferConvert'
 
 export const PerunCreationRequestList = ({
   requests,
   onCancel,
   walletID,
 }: {
-  requests: State.PerunRequest[]
+  requests: Perun.ReadableMessage.Request[]
   onCancel: () => void
   walletID: string
 }) => {
   const [t] = useTranslation()
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
-  const [currentRequest, setCurrentRequest] = useState<State.PerunRequest | null>(null)
+  const [currentRequest, setCurrentRequest] = useState<Perun.ReadableMessage.Request | null>(null)
   const dispatch = useDispatch()
 
-  const rejectPerunRequest = async (request: State.PerunRequest, reason: string) => {
+  const rejectPerunRequest = async (request: Perun.ReadableMessage.Request, reason: string) => {
     deletePerunRequest(request)(dispatch)
     await respondPerunRequest({
       type: request.type,
@@ -61,13 +60,14 @@ export const PerunCreationRequestList = ({
     })
   }
 
-  const renderPerunRequest = (perunRequest: State.PerunRequest) => {
+  const renderPerunRequest = (perunRequest: Perun.ReadableMessage.Request) => {
     switch (perunRequest.type) {
-      case 'openChannelRequest': {
+      case "OpenChannel": {
         console.log("PerunCreationRequestList open channel", perunRequest.request);
+        const request = perunRequest.request;
         return (
           <>
-            <h3>receive a open channel request</h3>
+            <h3>Open Channel Request from {request.participant.address}</h3>
             <p>{`Channel ID: `}</p>
             <p>{`State: `}</p>
             <p>{`Version: `}</p>
@@ -77,8 +77,8 @@ export const PerunCreationRequestList = ({
         )
       }
       case 'SignMessage': {
-        const request = perunRequest.request as State.PerunSignMessageRequest
-        const address = new TextDecoder().decode(hexToUint8Array(request.pubkey))
+        const request = perunRequest.request
+        const address = request.pubkey
         // const content = bytesToHex(new Uint8Array(request.request.data.data))
         return (
           <h2 className={styles.content}>
@@ -97,8 +97,7 @@ export const PerunCreationRequestList = ({
       }
       case 'SignTransaction': {
         const request = perunRequest.request as State.PerunSignTransactionRequest
-        const { identifier, transaction } = request
-        const address = scriptToAddress(identifier, { isMainnet: false })
+        const { identifier: address, transaction } = request
         // const content = JSON.stringify(transaction)
         return (
           <h2 className={styles.content}>
@@ -159,12 +158,35 @@ export const PerunCreationRequestList = ({
         return null
     }
   }
+  const handleOpenChannelRequest = async (perunRequest: Perun.ReadableMessage.Request) => {
+    deletePerunRequest(perunRequest)(dispatch)
+    await respondPerunRequest({
+      type: "OpenChannel",
+      response: {
+        data: true,
+      },
+    })
+    setCurrentRequest(null)
+  }
+  const handleUpdateNotificatoinRequest = async (perunRequest: Perun.ReadableMessage.Request) => {
+    deletePerunRequest(perunRequest)(dispatch)
+    await respondPerunRequest({
+      type: "UpdateNotification",
+      response: {
+        data: true,
+      },
+    })
+    setCurrentRequest(null)
+  }
 
   const handleSigningRequest = async (password: string) => {
-    const handleSignMessage = async (perunRequest: State.PerunRequest) => {
-      const request = perunRequest.request as State.PerunSignMessageRequest
+
+
+
+    const handleSignMessage = async (perunRequest: Perun.ReadableMessage.Request) => {
+      const request = perunRequest.request as Perun.ReadableMessage.SignMessageRequest
       // Uint8Array -> String
-      const address = new TextDecoder().decode(hexToUint8Array(request.pubkey))
+      const address = request.pubkey
       console.log('signing request for address----------', address)
       // const msgToSign = bytesToHex(new Uint8Array(request.data.data))
       // TODO: It would be nice to have a decoder for the Perun encoded messages.
@@ -197,7 +219,7 @@ export const PerunCreationRequestList = ({
       return res
     }
 
-    const handleSignTransaction = async (perunRequest: State.PerunRequest) => {
+    const handleSignTransaction = async (perunRequest: Perun.ReadableMessage.Request) => {
       const request = perunRequest.request as State.PerunSignTransactionRequest
       console.log('handleSignTransaction', request)
       console.log('inputs', request.transaction.inputs)
@@ -241,10 +263,14 @@ export const PerunCreationRequestList = ({
     }
 
     switch (currentRequest.type) {
+      // case "OpenChannel":
+      //   return handleOpenChannelRequest(currentRequest)
       case 'SignMessage':
         return handleSignMessage(currentRequest)
       case 'SignTransaction':
-        return handleSignTransaction(currentRequest) as any
+        return handleSignTransaction(currentRequest)
+      // case "UpdateNotification":
+      //   return handleUpdateNotificatoinRequest(currentRequest);
       default:
     }
   }
@@ -264,6 +290,14 @@ export const PerunCreationRequestList = ({
                   type="primary"
                   onClick={() => {
                     setCurrentRequest(request)
+                    if(request.type === "OpenChannel") {
+                      handleOpenChannelRequest(request)
+                      return;
+                    }
+                    if(request.type === "UpdateNotification") {
+                      handleUpdateNotificatoinRequest(request)
+                      return;
+                    }
                     setShowPasswordDialog(true)
                   }}
                 >

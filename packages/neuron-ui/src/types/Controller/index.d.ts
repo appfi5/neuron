@@ -226,8 +226,7 @@ declare namespace Controller {
     | { type: "restore", payload: RestoreChannelsParams }
 
   interface RespondPerunRequestParams {
-    // todo align with IPCMessageReqeust
-    type: 'openChannelRequest' | 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
+    type: Perun.RequestType
     response: { rejected?: { reason: string }; data: any }
   }
 

@@ -362,8 +362,7 @@ declare namespace State {
   }
 
   interface PerunRequest {
-    // todo align with IPCMessageRequest
-    type: 'openChannelRequest' | 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
+    type: Perun.RequestType
     request?: PerunSignMessageRequest | PerunSignTransactionRequest
     timestamp: number
   }

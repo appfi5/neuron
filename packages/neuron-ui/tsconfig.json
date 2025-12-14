@@ -18,5 +18,5 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src", "vitest-setup.js"]
+  "include": ["src", "vitest-setup.js", "../../types/*.d.ts"]
 }

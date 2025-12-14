@@ -109,9 +109,8 @@ declare namespace Controller {
       | { type: "get", payload: GetChannelParams }
       | { type: "restore", payload: RestoreChannelsParams }
 
-    import { IPCMessageRequest } from '../services/perun/server/wallet-backend'
     interface RespondPerunRequestParams {
-      type: IPCMessageRequest | 'SignMessage' | 'SignTransaction' | 'UpdateNotification'
+      type: Perun.RequestType
       response: { rejected?: { reason: string }; data: any }
     }
 

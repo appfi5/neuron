@@ -51,7 +51,6 @@ export async function getChannels(publicKey: string, address: string) {
   }
   console.log(actionRes.result);
   const channels = actionRes.result?.channels.states.map((channelState, idx) => {
-    // todo 过滤 isFinal 为true
     const { id: idObj, version, app, allocation, data, isFinal } = channelState;
     const id = idObj.data;
     const alloc = wire.Allocation.create(allocation);

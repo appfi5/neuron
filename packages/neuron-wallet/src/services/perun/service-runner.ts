@@ -3,16 +3,10 @@ import env from '../../env'
 import { ChildProcess, fork, spawn } from 'child_process'
 import fs from 'fs'
 import logger from '../../utils/logger'
-import { IPCMessageRequest } from './server/wallet-backend'
 import path from 'path'
 import { WalletBackend } from '../../utils/perun-wallet-wrapper/services'
 import PerunController from '../../controllers/perun'
 import { bytes } from '@ckb-lumos/codec'
-import Script from '../../models/chain/script'
-import Transaction from '../../models/chain/transaction'
-import Input from '../../models/chain/input'
-import CellsService from '../../services/cells'
-import OutPoint from '../../models/chain/out-point'
 // import RpcService from '../../services/rpc-service'
 // import { TransactionsService } from '../tx'
 // import NetworksService from '../networks'
@@ -20,8 +14,10 @@ import OutPoint from '../../models/chain/out-point'
 // import { NetworkType } from '../../models/network'
 import generateConfigFiles, { ConfigFileOptions } from './configFiles'
 import SettingsService from '../settings'
-import { fetchTargetCell } from './fetchCell'
-import { hexToUint8Array } from '../../utils/bufferConvert'
+import { parseOpenChannelRequest } from './tools/parser.open-channel'
+import { parseSignMessageRequest } from './tools/parser.sign-message'
+import { parseSignTransactionRequest } from './tools/parser.sign-transaction'
+import { parseUpdateNotificationRequest } from './tools/parser.update-notification'
 
 const { app } = env
 
@@ -116,20 +112,19 @@ export class PerunServiceRunner {
   }
 
   // 通过 ipc收到 backend 发来的 message
-  private ipcMessageHandler = (message: { type: IPCMessageRequest; req: unknown, requestId: string }) => {
-    // TODO: Properly type the req paramter. E.g. use an indexed type derived from the WalletBackend interface.
+  private ipcMessageHandler = (message: Perun.SerializedMessage.Request) => {
     console.log('receving ipcMessageHandler', message)
     switch (message.type) {
-      case 'openChannelRequest':
-        return this.handleOpenChannelRequest(message.req as any, message.requestId)
-      case 'updateNotificationRequest':
-        return this.handleUpdateNotificationRequest(message.req as any, message.requestId)
-      case 'signMessageRequest':
-        return this.handleSignMessageRequest(message.req as any, message.requestId)
-      case 'signTransactionRequest':
-        return this.handleSignTransactionRequest(message.req as any, message.requestId)
+      case 'OpenChannel':
+        return this.handleOpenChannelRequest(message.req, message.requestId)
+      case 'UpdateNotification':
+        return this.handleUpdateNotificationRequest(message.req, message.requestId)
+      case 'SignMessage':
+        return this.handleSignMessageRequest(message.req, message.requestId)
+      case 'SignTransaction':
+        return this.handleSignTransactionRequest(message.req, message.requestId)
       default: {
-        logger.info('Unknown IPC message type', message.type)
+        logger.info('Unknown IPC message type', message)
       }
     }
     logger.info('PerunServiceRunner received unexpected IPC message', message)
@@ -150,8 +145,7 @@ export class PerunServiceRunner {
   //   })
   // }
 
-  // todo IPCMessageRequest
-  private ipcResponse(type: IPCMessageRequest, requestId: string, req: unknown) {
+  private ipcResponse(type: Perun.RequestType, requestId: string, req: unknown) {
     logger.info('runner: ipcResponse-----------', type, requestId, req)
     return new Promise<void>((resolve, reject) => {
       this.runnerProcess?.send({ type, req, requestId }, error => {
@@ -166,89 +160,80 @@ export class PerunServiceRunner {
     })
   }
 
-  private handleOpenChannelRequest(_req: Parameters<WalletBackend<{}>['openChannelRequest']>[0], requestId: string) {
+  private async handleOpenChannelRequest(_req: Perun.SerializedMessage.ValidOpenChannelRequest, requestId: string) {
     type ResponseType = Awaited<ReturnType<WalletBackend<{}>['openChannelRequest']>>
-    return new Promise<void>((resolve) => {
-      // if (
-      //   !PerunController.emiter.emit('perun-request', {
-      //     type: 'openChannelRequest',
-      //     request: _req,
-      //   })
-      // ) {
-      //   this.ipcResponse('openChannelRequest', { rejected: { reason: 'offline' } }, requestId)
-      //   return reject(new Error('Failed to send perun request, no listener registered'))
-      // }
-
-      // PerunController.emiter.once('perun-response',(res: Controller.Params.RespondPerunRequestParams) => {
-
-      // })
-      // const responseData: ResponseType = {
-      //   rejected: {
-      //     reason: "test"
-      //   }
-      // }
-      // // reject test
-      // this.ipcResponse('openChannelRequest', responseData, requestId)
-
-      // Validate the request.
-      // this.validateOpenChannelRequest(req)
-      logger.info('runner: handleOpenChannelRequest-----------PerunServiceRunner received openChannelRequest', _req);
-      const nonceShare = new Uint8Array(32)
-
-      // 处理这个，比如让用户通过请求？？
-      crypto.getRandomValues(nonceShare)
-      const responseData: ResponseType = {
-        nonceShare
+    const readableReq = await parseOpenChannelRequest(_req);
+    return new Promise<void>((resolve, reject) => {
+      if (
+        !PerunController.emiter.emit('perun-request', {
+          type: "OpenChannel",
+          request: readableReq,
+        })
+      ) {
+        this.ipcResponse("OpenChannel", requestId, { rejected: { reason: 'offline' } })
+        return reject(new Error('Failed to send perun request, no listener registered'))
       }
-      // goto file:///./server/wallet-backend.ts#L40
-      this.ipcResponse('openChannelRequest', requestId, responseData)
-      resolve();
-    })
 
-  }
+      PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
+        if (res.response.rejected) {
+          this.ipcResponse("OpenChannel", requestId, { rejected: { reason: res.response.rejected.reason } })
+          return resolve();
+        }
 
-  private handleUpdateNotificationRequest(req: Parameters<WalletBackend<{}>['updateNotificationRequest']>[0], requestId: string) {
-    logger.info('PerunServiceRunner received updateNotificationRequest', req)
-    return new Promise<void>((resolve) => {
-      type ResponseType = Awaited<ReturnType<WalletBackend<{}>['openChannelRequest']>>
-      this.ipcResponse('updateNotificationRequest', requestId, { accepted: true } as ResponseType)
-      resolve()
+        // Validate the request.
+        // this.validateOpenChannelRequest(req)
+        logger.info('runner: handleOpenChannelRequest-----------PerunServiceRunner received openChannelRequest', _req);
+        const nonceShare = new Uint8Array(32)
 
-      // if (
-      //   !PerunController.emiter.emit('perun-request', {
-      //     type: 'UpdateNotification',
-      //     request: req,
-      //   })
-      // ) {
-      //   return reject(new Error('Failed to send perun request, no listener registered'))
-      // }
-
-      // PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
-      //   console.log('PerunServiceRunner received updateNotificationResponse', res)
-      //   if (res.response.rejected) {
-      //     this.ipcReturn('updateNotificationResponse', {
-      //       rejected: {
-      //         reason: res.response.rejected.reason,
-      //       },
-      //     })
-      //     return resolve()
-      //   }
-
-      //   this.ipcReturn('updateNotificationResponse', {
-      //     accepted: res.response.data,
-      //   })
-      //   resolve()
-      // })
+        // 处理这个，比如让用户通过请求？？
+        crypto.getRandomValues(nonceShare)
+        const responseData: ResponseType = {
+          nonceShare
+        }
+        // goto file:///./server/wallet-backend.ts#L40
+        this.ipcResponse("OpenChannel", requestId, responseData)
+        resolve();
+      })
     })
   }
 
-  private handleSignMessageRequest(req: Parameters<WalletBackend<{}>['signMessageRequest']>[0], requestId: string) {
+  private handleUpdateNotificationRequest(req: Perun.SerializedMessage.UpdateNotificationRequest, requestId: string) {
+    type ResponseType = Awaited<ReturnType<WalletBackend<{}>["updateNotificationRequest"]>>
+    const readableReq = parseUpdateNotificationRequest(req);
+    logger.info('PerunServiceRunner received updateNotificationRequest', readableReq)
+    return new Promise<void>((resolve, reject) => {
+      if (
+        !PerunController.emiter.emit('perun-request', {
+          type: 'UpdateNotification',
+          request: readableReq,
+        })
+      ) {
+        this.ipcResponse("UpdateNotification", requestId, { rejected: { reason: 'offline' } })
+        return reject(new Error('Failed to send perun request, no listener registered'))
+      }
+
+      PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
+        if (res.response.rejected) {
+          this.ipcResponse("UpdateNotification", requestId, { rejected: { reason: res.response.rejected.reason } })
+          return resolve();
+        }
+
+        const responseData: ResponseType = { accepted: true }
+        // goto file:///./server/wallet-backend.ts#L40
+        this.ipcResponse("UpdateNotification", requestId, responseData)
+        resolve();
+      })
+
+    })
+  }
+
+  private handleSignMessageRequest(req: Perun.SerializedMessage.ValidSignMessageRequest, requestId: string) {
     logger.info('runner: handleSignMessageRequest-----------', req)
     return new Promise<void>((resolve, reject) => {
       if (
         !PerunController.emiter.emit('perun-request', {
           type: 'SignMessage',
-          request: req,
+          request: parseSignMessageRequest(req),
         })
       ) {
         return reject(new Error('Failed to send perun request, no listener registered'))
@@ -256,7 +241,7 @@ export class PerunServiceRunner {
 
       PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
         if (res.response.rejected) {
-          this.ipcResponse('signMessageRequest', requestId, {
+          this.ipcResponse("SignMessage", requestId, {
             rejected: {
               reason: res.response.rejected.reason,
             },
@@ -308,7 +293,7 @@ export class PerunServiceRunner {
         //
         // We always append the marker byte and only pad with zero bytes if the signature is shorter than 72 bytes.
         const paddedSig = `${derSig}${'ff'}${'00'.repeat(72 - derSig.slice(2).length / 2)}`
-        this.ipcResponse('signMessageRequest', requestId, {
+        this.ipcResponse('SignMessage', requestId, {
           signature: paddedSig,
         })
         resolve()
@@ -316,134 +301,24 @@ export class PerunServiceRunner {
     })
   }
 
-  private handleSignTransactionRequest(_req: Parameters<WalletBackend<{}>['signTransactionRequest']>[0], requestId: string) {
+  private handleSignTransactionRequest(_req: Perun.SerializedMessage.SignTransactionRequest, requestId: string) {
     // logger.info('PerunServiceRunner received signTransactionRequest prev', _req)
-    const req = {
-      identifier: new TextDecoder('utf-8').decode(hexToUint8Array(_req.identifier as unknown as string)),
-      transaction: new TextDecoder('utf-8').decode(hexToUint8Array(_req.transaction as unknown as string)),
-    }
     return new Promise<void>(async (resolve, reject) => {
+      type ResponseType = Awaited<ReturnType<WalletBackend<{}>["signTransactionRequest"]>>
+      const req = await parseSignTransactionRequest(_req)
+        .catch(e => {
+          this.ipcResponse('SignTransaction', requestId, { rejected: { reason: `sign transaction error: ${e.message}` } } as ResponseType)
+          reject(e);
+        })
+        
       // 这里看出来是谁的请求
       // 是 开？ 是关？ 是更新？
       logger.info('PerunServiceRunner received signTransactionRequest', req)
-      // Transform IPC malformed request into a valid request.
-      const snakeCaseToCamelCase = (_: string, value: any): any => {
-        if (Array.isArray(value)) {
-          return value.map(item => snakeCaseToCamelCase(_, item))
-        }
-
-        const toCamelCase = (str: string) => {
-          return str.replace(/_([a-z])/g, function (_, group1) {
-            return group1.toUpperCase()
-          })
-        }
-
-        if (typeof value === 'object' && value !== null) {
-          const camelCasedObject: any = {}
-          for (const originalKey in value) {
-            if (value.hasOwnProperty(originalKey)) {
-              const camelCasedKey = toCamelCase(originalKey)
-              const originalValue = value[originalKey]
-              const newValue = camelCasedKey === 'depType' ? toCamelCase(originalValue) : originalValue
-              camelCasedObject[camelCasedKey] = newValue
-            }
-          }
-          return camelCasedObject
-        }
-        return value
-      }
-      const sdkScript = JSON.parse(req.identifier as any, snakeCaseToCamelCase)
-      // TODO: The transaction here has unresolved inputs, which are only referenced by their outpoints.
-      // - Transaction.inputs have to be resolved.
-      // - Transaction.computeHash() has to work.
-      // -> Rest seems fine. src/models/chain/transaction.ts
-      logger.info('PerunServiceRunner received signTransactionRequest:sdkScript', sdkScript)
-      let sdkTx = JSON.parse(req.transaction as any, snakeCaseToCamelCase)
-      logger.info('PerunServiceRunner received signTransactionRequest:sdkTx', sdkTx)
-      // Fetch live cells from txs input-outpoints.
-      let resolvedInputs = []
-      // const network = NetworksService.getInstance().getCurrent()
-      // const rpcService = new RpcService(network.remote, network.type)
-      for (const [idx, input] of sdkTx.txView.inputs.entries()) {
-        let typedInput = input as { previousOutput: { txHash: string; index: string }; since: string }
-        logger.info('Fetching live cell', input.previousOutput)
-        // Try to fetch the live cell from the database multiple times before giving up.
-        let retries = 0
-        const delay = 5_000 // 5 seconds
-        let liveCell = undefined
-        while (retries < 25) {
-          const fetchedCell = await CellsService.getLiveCell(OutPoint.fromObject(input.previousOutput))
-          // const outputs = await CellsService.getOutputsByTransactionHash(input.previousOutput.txHash)
-          // logger.info('fetched outputs:', outputs)
-          // const tx = await TransactionsService.get(input.previousOutput.txHash)
-          // logger.info('fetched tx:', tx)
-          if (fetchedCell) {
-            liveCell = fetchedCell
-            break
-          }
-          logger.info('USING RPC-SERVICE')
-          // const rpcTip = await rpcService.getTipHeader()
-          // logger.info('TIP:', rpcTip)
-          // const rpcTx = await rpcService.getTransaction(input.previousOutput.txHash)
-          // const rpcTx = network.type === NetworkType.Light
-          //   // light rpc did't include the tx of peer A user
-          //   ? await (await (rpcService.rpc as LightRPC).fetchTransaction(input.previousOutput.txHash)).txWithStatus
-          //   : await rpcService.getTransaction(input.previousOutput.txHash)
-          // const targetCell = rpcTx?.transaction?.outputs[Number(input.previousOutput.index)]
-          // logger.info('RPC-TX:', rpcTx)
-          // todo testnet only for now
-          const targetCell = await fetchTargetCell(input.previousOutput.txHash, input.previousOutput.index);
-          // console.log("iCell", targetCell);
-
-          if (targetCell) {
-            liveCell = targetCell; // rpcTx.transaction.outputs[Number(input.previousOutput.index)]
-            break
-          }
-          logger.info(`Failed to fetch live cell, retrying in ${delay}ms`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-          retries++
-        }
-
-        if (!liveCell) {
-          return reject(new Error('Failed to fetch live cell'))
-        }
-        console.log("liveCell data check", liveCell)
-
-        const resolvedInput = Input.fromObject({
-          previousOutput: OutPoint.fromObject(typedInput.previousOutput),
-          since: typedInput.since,
-          capacity: liveCell.capacity,
-          // @ts-ignore
-          lock: liveCell.lock,
-          // @ts-ignore
-          lockHash: liveCell.lockHash,
-          // @ts-ignore
-          multiSignBlake160: liveCell.multiSignBlake160,
-          // @ts-ignore
-          type: liveCell.type,
-          // @ts-ignore
-          typeHash: liveCell.typeHash,
-          // @ts-ignore
-          data: liveCell.data,
-        })
-        resolvedInput.setInputIndex(idx.toString())
-        resolvedInputs.push(resolvedInput)
-      }
-      logger.info('Resolved inputs', resolvedInputs)
-      logger.info('Transformed request', { sdkScript, sdkTx: JSON.stringify(sdkTx) })
-      const identifier = Script.fromSDK(sdkScript)
-      const transaction = Transaction.fromSDK(sdkTx.txView)
-      // Update the transaction with the resolved inputs.
-      // Has to happen after `fromSDK` call, because `fromSDK` expects less
-      // data than available and ignores the resolved inputs completely.
-      transaction.inputs = resolvedInputs
-      logger.info(`tx hash: ${transaction.computeHash()}`)
-      let validReq = { identifier, transaction }
-      logger.info('FINAL INPUTS', validReq.transaction.inputs)
+      
       if (
         !PerunController.emiter.emit('perun-request', {
           type: 'SignTransaction',
-          request: validReq,
+          request: req,
         })
       ) {
         return reject(new Error('Failed to send perun request, no listener registered'))
@@ -451,7 +326,7 @@ export class PerunServiceRunner {
 
       PerunController.emiter.once('perun-response', (res: Controller.Params.RespondPerunRequestParams) => {
         if (res.response.rejected) {
-          this.ipcResponse('signTransactionRequest', requestId, {
+          this.ipcResponse('SignTransaction', requestId, {
             rejected: {
               reason: res.response.rejected.reason,
             },
@@ -459,7 +334,7 @@ export class PerunServiceRunner {
           return resolve()
         }
         const signedTx = res.response.data
-        this.ipcResponse('signTransactionRequest', requestId, { transaction: signedTx })
+        this.ipcResponse('SignTransaction', requestId, { transaction: signedTx })
         resolve()
       })
     })

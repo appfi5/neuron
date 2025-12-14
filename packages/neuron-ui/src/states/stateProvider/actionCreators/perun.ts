@@ -9,7 +9,7 @@ export const initPerunState = () => (dispatch: StateDispatch) => {
   })
 }
 
-export const addPerunRequest = (request: State.PerunRequest) => (dispatch: StateDispatch) => {
+export const addPerunRequest = (request: Perun.ReadableMessage.Request) => (dispatch: StateDispatch) => {
   const requests = perunRequestsCache.load()
   perunRequestsCache.save([...requests, request])
   dispatch({
@@ -18,7 +18,7 @@ export const addPerunRequest = (request: State.PerunRequest) => (dispatch: State
   })
 }
 
-export const deletePerunRequest = (request: State.PerunRequest) => (dispatch: StateDispatch) => {
+export const deletePerunRequest = (request: Perun.ReadableMessage.Request) => (dispatch: StateDispatch) => {
   const requests = perunRequestsCache.load()
   console.log('deletePerunRequest', requests, request)
   perunRequestsCache.save(requests.filter(r => r.timestamp !== request.timestamp))
