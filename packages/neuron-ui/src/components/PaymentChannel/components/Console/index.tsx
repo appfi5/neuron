@@ -211,6 +211,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
         <PerunCreationRequestList
           walletID={wallet?.id ?? ''}
           requests={requests}
+          channelInfoMap={channelInfoMap}
           onOpenChannel={(request) => {
             // todo convert request.initBals to payload
             const payload: PerunAPI.OpenChannelParams['balances'] = [{ type: null, balances: ["1", "2"]}]

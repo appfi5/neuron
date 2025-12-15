@@ -20,7 +20,7 @@ export function useChannelInfoMap() {
     const { [channelId]: _, ...rest } = map
     return rest
   })
-  const get = (channelId: string) => map[channelId]
+  const get = (channelId: string) => map[channelId] as ChannelInfo | undefined
 
   return {
     add,

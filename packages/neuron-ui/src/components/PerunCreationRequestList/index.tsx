@@ -34,11 +34,13 @@ import { deletePerunRequest } from 'states/stateProvider/actionCreators'
 import styles from './perunCreationRequestList.module.scss'
 import { getCompatibleTx } from './utils'
 import Token from 'components/PaymentChannel/components/Token'
+import { useChannelInfoMap } from 'components/PaymentChannel/hooks'
 
 type PerunRequestListProps = {
   requests: Perun.ReadableMessage.Request[]
   onCancel: () => void
   walletID: string
+  channelInfoMap: ReturnType<typeof useChannelInfoMap>
   onOpenChannel: (request: Perun.ReadableMessage.OpenChannelRequest) => void
   onUpdateChannel: (request: Perun.ReadableMessage.UpdateNotificationRequest) => void
 }
@@ -50,6 +52,7 @@ export const PerunCreationRequestList = (props: PerunRequestListProps) => {
     walletID,
     onOpenChannel,
     onUpdateChannel,
+    channelInfoMap,
   } = props
   const [t] = useTranslation()
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
@@ -133,26 +136,31 @@ export const PerunCreationRequestList = (props: PerunRequestListProps) => {
       case "UpdateNotification": {
         console.log('UpdateNotification request: ', perunRequest.request)
         const channelState = perunRequest.request.state;
+        const info = channelInfoMap.get(channelState!.id);
+        const myPayloadIndex = info?.myPayloadIndex ?? 1
         return (
           <>
             <h3 className='my-0'>Update Notification</h3>
             <p>{`Channel ID: ${channelState?.id}`}</p>
             <div className='flex flex-row gap-4 mt-2'>
               <div>
-                <div className='text-secondary'>Who's Token Locked</div>
+                <div className='text-secondary'>My Token Locked</div>
                 <div className='mt-1'>
-                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[0] ?? "0"} />
+                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[myPayloadIndex] ?? "0"} />
                 </div>
               </div>
               <div>
-                <div className='text-secondary'>Who's Token Locked</div>
+                <div className='text-secondary'>Peer Token Locked</div>
                 <div className='mt-1'>
-                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[1] ?? "0"} />
+                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[1 - myPayloadIndex] ?? "0"} />
                 </div>
               </div>
-            </div>
-            <div>
-              isFinal: {channelState?.isFinal === true ? 'true' : 'false'}
+              <div>
+                <div className='text-secondary'>isFinal</div>
+                <div className='mt-1'>
+                  {channelState?.isFinal === true ? 'true' : 'false'}
+                </div>
+              </div>
             </div>
           </>
         )
