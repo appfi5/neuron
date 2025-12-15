@@ -16,7 +16,7 @@ import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunPersistorService from '../services/perun/persistor'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
 import { ccc, mol } from "@ckb-ccc/core"
-import participant from 'src/services/perun/tools/participant'
+import participant from '../services/perun/tools/participant'
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {

@@ -146,7 +146,7 @@ declare namespace Perun {
 
   // for web
   namespace ReadableMessage {
-    type HexString = `0x${string}`
+    type HexString = string // `0x${string}`
     type PeerUser = {
       publicKey: HexString,
       address: string,

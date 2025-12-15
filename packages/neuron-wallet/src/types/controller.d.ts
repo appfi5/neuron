@@ -76,18 +76,18 @@ declare namespace Controller {
       password: string
       message: string
     }
-    interface OpenChannelParams {
-      // me: Uint8Array
-      // peer: Uint8Array
-      // balances: [Uint8Array, Uint8Array]
-      challengeDuration: number
-      me: { publicKey: string, address: string },
-      peer: { publicKey: string, address: string },
-      balances: Array<{
-        type: null | { codeHash: string, hashType: string, args: string }
-        balances: [string, string]
-      }>
-    }
+    // interface OpenChannelParams {
+    //   // me: Uint8Array
+    //   // peer: Uint8Array
+    //   // balances: [Uint8Array, Uint8Array]
+    //   challengeDuration: number
+    //   me: { publicKey: string, address: string },
+    //   peer: { publicKey: string, address: string },
+    //   balances: Array<{
+    //     type: null | { codeHash: string, hashType: string, args: string }
+    //     balances: [string, string]
+    //   }>
+    // }
     interface UpdateChannelParams {
       channelId: string
       index: number
@@ -109,7 +109,7 @@ declare namespace Controller {
     type PerunServiceActionParams =
       | { type: "startup", payload: PerunChannelServiceRunnerStartupsParams }
       | { type: "shutdown" }
-      | { type: "open", payload: OpenChannelParams }
+      | { type: "open", payload: PerunAPI.OpenChannelParams }
       | { type: "update", payload: UpdateChannelParams }
       | { type: "close", payload: CloseChannelParams }
       | { type: "get", payload: GetChannelParams }
