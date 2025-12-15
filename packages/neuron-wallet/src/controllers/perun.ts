@@ -149,7 +149,7 @@ export default class PerunController {
     const meRequestId = await participant.encode(me.publicKey, me.address);
     const peerRequestId = await participant.encode(peer.publicKey, peer.address);
     const { assets, balances: iBalances } = balances.reduce((obj, item) => {
-      obj.assets.push(item.type ? ccc.Script.from(item.type).toBytes() : new Uint8Array(0))
+      obj.assets.push(item.type ? ccc.Script.from(item.type).toBytes() : new Uint8Array(1))
       obj.balances.push(
         item.balances.map(balance => bytes.bytify(equalNumPaddedHex(BigInt(balance)))),
       )
