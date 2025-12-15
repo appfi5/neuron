@@ -1,32 +1,24 @@
 import { perunServiceAction } from "services/remote";
-import { bigintFromBEBytes, equalNumPaddedHex, getParticipantByAddressAndPubkey, isSuccessResponse } from "utils";
-import { bytes } from '@ckb-lumos/codec'
-import { channelIdToString } from "utils/perun-wallet-wrapper/translator";
-import * as wire from "utils/perun-wallet-wrapper/wire";
-import { PackableScript } from "@ckb-lumos/helpers/lib/models/script";
+import { getParticipantByAddressAndPubkey, isSuccessResponse } from "utils";
 import { ControllerResponse } from "services/remote/remoteApiWrapper";
+import { hexToUint8Array } from "utils/bufferConvert";
 
-export type PeerUser = {
-  address: string;
-  publicKey?: string;
-}
 
-export type TradePayload = {
-  type: PackableScript | null
-  amount: number | bigint
-}
-
-export const CONNECTING_ID = "CONNECTING_ID";
-
-export type ChannelInfo = {
+export type ChannelState = {
   id: string;
-  me: PeerUser;
-  status: "connecting" | "connected" | "closed"
-  peer: PeerUser;
-  payload?: [TradePayload, TradePayload]
-  state?: wire.State;
-  myPayloadIndex: 0 | 1;
+  state: Perun.ReadableMessage.State;
+  actorIdx: 0 | 1;
 }
+
+// export type ChannelInfo = {
+//   id: string;
+//   me: PeerUser;
+//   status: "connecting" | "connected" | "closed"
+//   peer: PeerUser;
+//   payload?: [TradePayload, TradePayload]
+//   // state?: wire.State;
+//   myPayloadIndex: 0 | 1;
+// }
 export async function startupChannelServiceRunner(publicKey: string) {
   const actionRes = await perunServiceAction({
     type: 'startup',
@@ -45,57 +37,14 @@ export async function getChannels(publicKey: string, address: string) {
     payload: {
       requester: getParticipantByAddressAndPubkey(address, publicKey),
     },
-  }) as ControllerResponse<{ channels: { actorIdxs: (0 | 1)[], states: any[] } }>
+  }) as ControllerResponse<ChannelState[]>
   if (!isSuccessResponse(actionRes)) {
     return []
   }
-  console.log(actionRes.result);
-  const channels = actionRes.result?.channels.states.map((channelState, idx) => {
-    const { id: idObj, version, app, allocation, data, isFinal } = channelState;
-    const id = idObj.data;
-    const alloc = wire.Allocation.create(allocation);
-    const state = wire.State.create({
-      id,
-      version,
-      app,
-      allocation: alloc,
-      data,
-      isFinal,
-    })
-
-    const channel: ChannelInfo = {
-      id: channelIdToString(id),
-      me: {
-        publicKey,
-        address: address,
-      },
-      peer: {
-        // publicKey: peerPublicKey,
-        address: 'where-to-get-the-address-from',
-      },
-      payload: [
-        {
-          // todo decode type script
-          type: null,
-          amount: bigintFromBEBytes(channelState.allocation?.balances?.balances[0].balance[0]!.data) / BigInt(1e8),
-        },
-        {
-          // todo decode type script
-          type: null,
-          amount: bigintFromBEBytes(channelState.allocation?.balances?.balances[0].balance[1]!.data) / BigInt(1e8),
-        },
-      ],
-      status: "connected",
-      state: state,
-      myPayloadIndex: actionRes.result!.channels.actorIdxs[idx],
-    }
-
-    return channel;
-  }) ?? [];
-  return channels;
+  return actionRes.result ?? [];
 }
 
-export async function openChannel(publicKey: string, address: string, peerUser: PerunAPI.PeerUser, payload: [TradePayload, TradePayload], challengeDuration: number) {
+export async function openChannel(publicKey: string, address: string, peerUser: PerunAPI.PeerUser, balances: PerunAPI.OpenChannelParams['balances'], challengeDuration: number) {
   // open channel request will return after both peer user signed transaction
   return perunServiceAction({
     type: 'open',
@@ -112,27 +61,18 @@ export async function openChannel(publicKey: string, address: string, peerUser: 
     payload: {
       me: { publicKey, address },
       peer: peerUser,
-      balances: [
-        {
-          type: null,
-          balances: [
-            BigInt(payload[0].amount * 1e8).toString(),
-            BigInt(payload[1].amount * 1e8).toString(),
-          ]
-        },
-        // { type: null, balances: [1, 2] }, // udt
-      ],
+      balances,
       challengeDuration: Number(challengeDuration),
     }
   })
 }
 
-export async function updateChannel(channelState: wire.State, balanceIndex: number, swapAmount: number | bigint) {
+export async function updateChannel(channelId: string, balanceIndex: number, swapAmount: number | bigint) {
 
   const res = await perunServiceAction({
     type: 'update',
     payload: {
-      channelId: channelIdToString(channelState.id),
+      channelId: channelId,
       // here means which asset to update
       index: balanceIndex,
       amount: swapAmount,
@@ -155,11 +95,11 @@ export async function restoreChannels() {
 }
 
 
-export async function closeChannel(channelId: Uint8Array<ArrayBufferLike>) {
+export async function closeChannel(channelId: string) {
   return perunServiceAction({
     type: 'close',
     payload: {
-      channelId,
+      channelId: hexToUint8Array(channelId),
     },
   })
 }

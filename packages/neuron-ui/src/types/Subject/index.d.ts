@@ -72,7 +72,7 @@ declare namespace Subject {
     action?: 'ok' | 'cancel'
   }
 
-  type PerunRequest = State.PerunRequest
+  type PerunRequest = Perun.ReadableMessage.Request
 
   type PerunChannel = State.PerunChannel
 }

@@ -135,7 +135,7 @@ export type StateAction =
     }
   | {
       type: PaymentChannelActions.UpdatePerunRequest
-      payload: State.PerunRequest[]
+      payload: Perun.ReadableMessage.Request[]
     }
   | {
       type: PaymentChannelActions.UpdatePerunChannel

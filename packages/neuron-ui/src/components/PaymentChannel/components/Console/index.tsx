@@ -1,7 +1,7 @@
 import { useState as useGlobalState } from 'states'
 import { useTranslation } from 'react-i18next'
 import { useInterval, useRequest } from 'ahooks'
-import { ChannelInfo, CONNECTING_ID, getChannels, openChannel, PeerUser, restoreChannels, startupChannelServiceRunner, TradePayload } from '../../api'
+import { getChannels, openChannel } from '../../api'
 import { useEffect, useMemo, useState } from 'react'
 import { getCurrentWalletAccountExtendedPubKey, showErrorMessage } from 'services/remote'
 import styles from '../../perun.module.scss'
@@ -32,8 +32,8 @@ import PerunCloseChannel from 'components/PerunCloseChannel'
 import PerunOpenChannel from '../OpenChannel'
 import Button from 'widgets/Button'
 import Tooltip from 'widgets/Tooltip'
-import { channelIdToString } from 'utils/perun-wallet-wrapper/translator'
 import CopyZone from 'widgets/CopyZone'
+import { ChannelInfo, UNMATCH_CHANNEL_ID, useChannelInfoMap } from 'components/PaymentChannel/hooks'
 
 enum DialogType {
   creationRequest = 'creationRequest',
@@ -57,9 +57,10 @@ export default function PerunConsole(props: PerunConsoleProps) {
   } = useGlobalState()
   const [t] = useTranslation()
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
-  const [pendingChannels, setPendingChannels] = useState<ChannelInfo[]>([])
-  const [channelMap, setChannelMap] = useState<Record<string, ChannelInfo>>({})
-  const { data: patialChannelInfos = [], run: syncChannels } = useRequest(async () => {
+  const channelInfoMap = useChannelInfoMap()
+  // const [pendingChannels, setPendingChannels] = useState<ChannelInfo[]>([])
+  // const [channelMap, setChannelMap] = useState<Record<string, ChannelInfo>>({})
+  const { data: channelStates = [], run: syncChannels } = useRequest(async () => {
     const list = await getChannels(myPubKey, myAddress)
     return list;
   }, {
@@ -69,26 +70,14 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
   useInterval(syncChannels, !!myPubKey ? 5000 : 0)
 
-  const channels = useMemo(() => {
-    return patialChannelInfos.map(item => {
-      if (channelMap[item.id]) {
-        return {
-          ...item,
-          peer: channelMap[item.id].peer,
-        }
-      }
-      return item;
-    })
-  }, [channelMap, patialChannelInfos])
-
   const assets = ['CKB']
   console.log("perun requests", requests);
-  console.log("channelMap", channelMap, patialChannelInfos);
+  console.log("perun channle states", channelStates);
 
   return (
     <div className={styles.container}>
       <div className='flex flex-row justify-between items-center mb-4'>
-        <Button type="danger" className={styles.createBtn} onClick={() => setDialogType(DialogType.openChannel)}>
+        <Button type="danger" className={styles.createBtn} onClick={() => { }}>
           Exit
         </Button>
         <Button type="primary" className={styles.createBtn} onClick={() => setDialogType(DialogType.openChannel)}>
@@ -200,16 +189,17 @@ export default function PerunConsole(props: PerunConsoleProps) {
             /> */}
         </div>
         <div className={styles.overviewWrap}>
-          {pendingChannels.map(info => (
+          {/* {pendingChannels.map(info => (
             <ChannelCard
               key={info.id}
               channelInfo={info}
             />
-          ))}
-          {channels.map(item => (
+          ))} */}
+          {channelStates.map(state => (
             <ChannelCard
-              key={item.id}
-              channelInfo={item}
+              key={state.id}
+              channelInfo={channelInfoMap.get(state.id)}
+              channelState={state}
               onClose={() => { }}
               onSend={() => { }}
             />
@@ -221,6 +211,37 @@ export default function PerunConsole(props: PerunConsoleProps) {
         <PerunCreationRequestList
           walletID={wallet?.id ?? ''}
           requests={requests}
+          onOpenChannel={(request) => {
+            // todo convert request.initBals to payload
+            const payload: PerunAPI.OpenChannelParams['balances'] = [{ type: null, balances: ["1", "2"]}]
+            const channelInfo: ChannelInfo = {
+              channelId: UNMATCH_CHANNEL_ID,
+              me: {
+                address: myAddress,
+                publicKey: myPubKey,
+              },
+              peer: request.participant,
+              payload,
+              myPayloadIndex: 1,
+            }
+            channelInfoMap.add(UNMATCH_CHANNEL_ID, channelInfo);
+          }}
+          onUpdateChannel={(request) => {
+            const channelId = request.state?.id as string
+            if(channelId && !channelInfoMap.has(channelId) && channelInfoMap.has(UNMATCH_CHANNEL_ID)) {
+              const temChannelInfo = channelInfoMap.get(UNMATCH_CHANNEL_ID)
+              const channelInfo = {
+                ...temChannelInfo,
+                channelId: channelId,
+              }
+              channelInfoMap.add(channelId, channelInfo)
+              channelInfoMap.delete(UNMATCH_CHANNEL_ID)
+            }
+            // setChannelMap(prev => {
+            //   prev[channelInfo.id] = channelInfo
+            //   return { ...prev }
+            // })
+          }}
           onCancel={() => setDialogType(undefined)}
         />
       )}
@@ -231,53 +252,47 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
       <PerunOpenChannel
         show={dialogType === DialogType.openChannel}
-        onRequest={(peerUser: PeerUser, payload: [TradePayload, TradePayload]) => {
+        onRequest={(peerUser: PerunAPI.PeerUser, payload: PerunAPI.OpenChannelParams['balances']) => {
           // todo check if have channel with this peer
           const channelInfo: ChannelInfo = {
-            id: peerUser.address,
+            channelId: "",
             me: {
               address: myAddress,
               publicKey: myPubKey,
             },
-            payload,
             peer: peerUser,
-            status: "connecting",
+            payload,
             myPayloadIndex: 0,
           }
-          setPendingChannels(prev => [...prev, channelInfo]);
-          setChannelMap(prev => {
-            prev[channelInfo.id] = channelInfo
-            return { ...prev }
-          })
+          // setPendingChannels(prev => [...prev, channelInfo]);
+          // setChannelMap(prev => {
+          //   prev[channelInfo.id] = channelInfo
+          //   return { ...prev }
+          // })
 
           openChannel(myPubKey, myAddress, peerUser, payload, 1000)
             .then(res => {
               if (!isSuccessResponse(res)) {
                 // remove from pending channels
-                setPendingChannels(prev => {
-                  return prev.filter(item => item.id !== channelInfo.id)
-                })
+                // setPendingChannels(prev => {
+                //   return prev.filter(item => item.id !== channelInfo.id)
+                // })
                 // remove temp Channel ID
-                setChannelMap(prev => {
-                  delete prev[channelInfo.id];
-                  return { ...prev }
-                })
+                // setChannelMap(prev => {
+                //   delete prev[channelInfo.id];
+                //   return { ...prev }
+                // })
                 showErrorMessage('Error', errorFormatter(res.message, t))
                 return;
               }
 
               // remove from pending channels
-              setPendingChannels(prev => {
-                return prev.filter(item => item.id !== channelInfo.id)
-              })
+              // setPendingChannels(prev => {
+              //   return prev.filter(item => item.id !== channelInfo.id)
+              // })
               // update Channel ID
-              setChannelMap(prev => {
-                delete prev[channelInfo.id];
-                channelInfo.id = res.result.channelId;
-                prev[channelInfo.id] = channelInfo;
-                return { ...prev }
-              })
-
+              channelInfo.channelId = res.result.channelId
+              channelInfoMap.add(channelInfo.channelId, channelInfo)
             })
             .catch(err => {
               console.log("openChannel error", err);

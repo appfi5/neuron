@@ -17,13 +17,13 @@ import TextField from 'widgets/TextField'
 import Dialog from 'widgets/Dialog'
 import Alert from 'widgets/Alert'
 import styles from './perunOpenChannel.module.scss'
-import { PeerUser, TradePayload } from 'components/PaymentChannel/api'
+import Big from 'big.js'
 
 type PerunOpenChannelProps = {
   show: boolean
   onClose: () => void
   myPubKey: string
-  onRequest: (peerUser: PeerUser, payload: [TradePayload, TradePayload]) => void
+  onRequest: (peerUser: PerunAPI.PeerUser, payload: PerunAPI.OpenChannelParams['balances']) => void
 }
 export default function PerunOpenChannel(props: PerunOpenChannelProps) {
   const { show, onClose, myPubKey, onRequest } = props;
@@ -97,13 +97,16 @@ export default function PerunOpenChannel(props: PerunOpenChannelProps) {
     const { myAmount, peerAddress, peerPubKey, peerAmount } = formData
 
 
-
-
     onRequest(
       { address: peerAddress, publicKey: peerPubKey },
       [
-        { type: null, amount: myAmount },
-        { type: null, amount: peerAmount },
+        {
+          type: null,
+          balances: [
+            new Big(myAmount).mul(10 ** 8).toString(),
+            new Big(peerAmount).mul(10 ** 8).toString(),
+          ]
+        },
       ]
     )
 

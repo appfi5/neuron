@@ -16,22 +16,22 @@ declare namespace Perun {
       type: 'Buffer',
       data: number[]
     }
-    type Balance = {
-      balance: SerializedBuffer[];
+    type Balance<T = SerializedBuffer> = {
+      balance: T[];
     }
-    type Balances = {
-      balances: Balance[];
+    type Balances<T = SerializedBuffer> = {
+      balances: Balance<T>[];
     }
-    type ValidAllocation = {
-      assets: SerializedBuffer[];
-      balances: Balances;
+    type ValidAllocation<T = SerializedBuffer> = {
+      assets: T[];
+      balances: Balances<T>;
     }
-    type AddressMapping = {
-      key: SerializedBuffer;
-      address: SerializedBuffer;
+    type AddressMapping<T = SerializedBuffer> = {
+      key: T;
+      address: T;
     }
-    type Address = {
-      addressMapping: AddressMapping[];
+    type Address<T = SerializedBuffer> = {
+      addressMapping: AddressMapping<T>[];
     }
     /**
      * IndexMap represents the mapping of a participant indices in a sub allocation
@@ -43,41 +43,41 @@ declare namespace Perun {
     }
 
     /** SubAlloc represts a sub allocation. */
-    type SubAlloc = {
-      id: SerializedBuffer;
-      bals: Balance | undefined;
+    type SubAlloc<T = SerializedBuffer> = {
+      id: T;
+      bals: Balance<T> | undefined;
       indexMap: IndexMap | undefined;
     }
     /** Allocation represents channel.Allocation. */
-    type Allocation = {
-      backends: SerializedBuffer[];
-      assets: SerializedBuffer[];
-      balances: Balances | undefined;
-      locked: SubAlloc[];
+    type Allocation<T = SerializedBuffer> = {
+      backends: T[];
+      assets: T[];
+      balances: Balances<T> | undefined;
+      locked: SubAlloc<T>[];
     }
 
-    type State = {
-      id: SerializedBuffer;
+    type State<T = SerializedBuffer> = {
+      id: T;
       version: number;
-      app: SerializedBuffer;
-      allocation: Allocation | undefined;
-      data: SerializedBuffer;
+      app: T;
+      allocation: Allocation<T> | undefined;
+      data: T;
       isFinal: boolean;
     }
 
-    type ValidOpenChannelRequest = {
+    type ValidOpenChannelRequest<T = SerializedBuffer> = {
       // The participant opening the channel.
-      participant: Address | undefined;
+      participant: Address<T> | undefined;
       // Peers requested to participate in the channel.
-      peers: Address[];
+      peers: Address<T>[];
       // Id of this channel proposal, can be used to match the request.
-      proposalId: SerializedBuffer;
+      proposalId: T;
       // Duration of the challenge phase in seconds.
       challengeDuration: number;
       // Nonce share of the participant.
-      nonceShare: SerializedBuffer;
+      nonceShare: T;
       // The initial balance distribution of the channel.
-      initBals: ValidAllocation;
+      initBals: ValidAllocation<T>;
       // Possibly differing balance distribution from the initBals one. E.g. the
       // request might contain the following initBals:
       //
@@ -96,27 +96,27 @@ declare namespace Perun {
       //
       // So the first participant is paying 200 CKBytes and 100 SUDT to also cover
       // the balances of the second participant.
-      fundingAgreement: Balances;
+      fundingAgreement: Balances<T>;
       // The temporary channel ID used to identify the peer in the first SignMsg request
-      tempChannelId: SerializedBuffer;
+      tempChannelId: T;
     }
 
-    type ValidSignMessageRequest = { // <T> 
-      pubkey: SerializedBuffer;
-      data: SerializedBuffer;
-      tempChannelID: SerializedBuffer;
+    type ValidSignMessageRequest<T = SerializedBuffer> = { // <T> 
+      pubkey: T;
+      data: T;
+      tempChannelID: T;
       // decoded: T;
     }
 
-    type SignTransactionRequest = {
-      identifier: SerializedBuffer;
+    type SignTransactionRequest<T = SerializedBuffer> = {
+      identifier: T;
       /** The transaction to be signed. */
-      transaction: SerializedBuffer;
+      transaction: T;
     }
 
-    type UpdateNotificationRequest = {
+    type UpdateNotificationRequest<T = SerializedBuffer> = {
       /** The state with which the channel should be updated. */
-      state: State | undefined;
+      state: State<T> | undefined;
     }
 
     type Request =
@@ -259,13 +259,15 @@ declare namespace PerunAPI {
   type PeerUser = Perun.ReadableMessage.PeerUser;
   type Script = { codeHash: string, hashType: string, args: string }
 
+  type TradePayload = {
+    type: null | Script
+    balances: [string, string]
+  }
+
   type OpenChannelParams = {
     me: PeerUser,
     peer: PeerUser,
-    balances: Array<{
-      type: null | Script
-      balances: [string, string]
-    }>
+    balances: [TradePayload] | [TradePayload, TradePayload]
     challengeDuration: number
   }
 }

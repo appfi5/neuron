@@ -22,6 +22,7 @@ import {
   isSuccessResponse,
   errorFormatter,
   scriptToAddress,
+  clsx,
 } from 'utils'
 import { useDispatch } from 'states'
 import Tooltip from 'widgets/Tooltip'
@@ -32,16 +33,24 @@ import { PasswordDialog } from 'components/SignAndVerify'
 import { deletePerunRequest } from 'states/stateProvider/actionCreators'
 import styles from './perunCreationRequestList.module.scss'
 import { getCompatibleTx } from './utils'
+import Token from 'components/PaymentChannel/components/Token'
 
-export const PerunCreationRequestList = ({
-  requests,
-  onCancel,
-  walletID,
-}: {
+type PerunRequestListProps = {
   requests: Perun.ReadableMessage.Request[]
   onCancel: () => void
   walletID: string
-}) => {
+  onOpenChannel: (request: Perun.ReadableMessage.OpenChannelRequest) => void
+  onUpdateChannel: (request: Perun.ReadableMessage.UpdateNotificationRequest) => void
+}
+
+export const PerunCreationRequestList = (props: PerunRequestListProps) => {
+  const {
+    requests,
+    onCancel,
+    walletID,
+    onOpenChannel,
+    onUpdateChannel,
+  } = props
   const [t] = useTranslation()
   const [showPasswordDialog, setShowPasswordDialog] = useState(false)
   const [currentRequest, setCurrentRequest] = useState<Perun.ReadableMessage.Request | null>(null)
@@ -63,16 +72,23 @@ export const PerunCreationRequestList = ({
   const renderPerunRequest = (perunRequest: Perun.ReadableMessage.Request) => {
     switch (perunRequest.type) {
       case "OpenChannel": {
-        console.log("PerunCreationRequestList open channel", perunRequest.request);
+        // console.log("PerunCreationRequestList open channel", perunRequest.request);
         const request = perunRequest.request;
+        const address = request.participant.address;
         return (
           <>
-            <h3>Open Channel Request from {request.participant.address}</h3>
-            <p>{`Channel ID: `}</p>
-            <p>{`State: `}</p>
-            <p>{`Version: `}</p>
-            <p>{`Balances: A: xx, B: xx`}</p>
-            <p>{`IsFinal: boolean`}</p>
+            <h3 className='my-0'>Open Channel Request from {address.slice(0, 10)}...{address.slice(-10)}</h3>
+            <p>{`Channel ID: ${request.proposalId}`}</p>
+            <div className='flex flex-row gap-4 mt-2'>
+              <div>
+                <div className='text-secondary'>My Token Locked</div>
+                <div className='mt-1'><Token type={null} amount={request.initBals.balances.balances[0].balance[1]} /></div>
+              </div>
+              <div>
+                <div className='text-secondary'>Peer Token Locked</div>
+                <div className='mt-1'><Token type={null} amount={request.initBals.balances.balances[0].balance[0]} /></div>
+              </div>
+            </div>
           </>
         )
       }
@@ -116,9 +132,29 @@ export const PerunCreationRequestList = ({
       }
       case "UpdateNotification": {
         console.log('UpdateNotification request: ', perunRequest.request)
-        debugger;
+        const channelState = perunRequest.request.state;
         return (
-          <div>UpdateNotification??</div>
+          <>
+            <h3 className='my-0'>Update Notification</h3>
+            <p>{`Channel ID: ${channelState?.id}`}</p>
+            <div className='flex flex-row gap-4 mt-2'>
+              <div>
+                <div className='text-secondary'>Who's Token Locked</div>
+                <div className='mt-1'>
+                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[0] ?? "0"} />
+                </div>
+              </div>
+              <div>
+                <div className='text-secondary'>Who's Token Locked</div>
+                <div className='mt-1'>
+                  <Token type={null} amount={channelState?.allocation?.balances?.balances[0].balance[1] ?? "0"} />
+                </div>
+              </div>
+            </div>
+            <div>
+              isFinal: {channelState?.isFinal === true ? 'true' : 'false'}
+            </div>
+          </>
         )
       }
       // case 'UpdateNotification': {
@@ -158,7 +194,8 @@ export const PerunCreationRequestList = ({
         return null
     }
   }
-  const handleOpenChannelRequest = async (perunRequest: Perun.ReadableMessage.Request) => {
+  const handleOpenChannelRequest = async (perunRequest: Perun.ReadableMessage.Request & { type: "OpenChannel" }) => {
+    onOpenChannel(perunRequest.request)
     deletePerunRequest(perunRequest)(dispatch)
     await respondPerunRequest({
       type: "OpenChannel",
@@ -168,7 +205,8 @@ export const PerunCreationRequestList = ({
     })
     setCurrentRequest(null)
   }
-  const handleUpdateNotificatoinRequest = async (perunRequest: Perun.ReadableMessage.Request) => {
+  const handleUpdateNotificatoinRequest = async (perunRequest: Perun.ReadableMessage.Request & { type: "UpdateNotification" }) => {
+    onUpdateChannel(perunRequest.request)
     deletePerunRequest(perunRequest)(dispatch)
     await respondPerunRequest({
       type: "UpdateNotification",
@@ -280,7 +318,10 @@ export const PerunCreationRequestList = ({
       <Dialog show title={t('perun.channel-creation-request-list')} showFooter={false} onCancel={onCancel}>
         <div className={styles.container}>
           {requests.map(request => (
-            <div className={styles.cellWrap} key={request.request}>
+            <div
+              key={request.request}
+              className={clsx(styles.cellWrap, request.type === "OpenChannel" || request.type === "UpdateNotification" ? "flex-col" : "flex-row")}
+            >
               {renderPerunRequest(request)}
               <div className={styles.creationRequestBtnWrap}>
                 <Button type="cancel" onClick={() => rejectPerunRequest(request, 'User rejected')}>
@@ -290,11 +331,11 @@ export const PerunCreationRequestList = ({
                   type="primary"
                   onClick={() => {
                     setCurrentRequest(request)
-                    if(request.type === "OpenChannel") {
+                    if (request.type === "OpenChannel") {
                       handleOpenChannelRequest(request)
                       return;
                     }
-                    if(request.type === "UpdateNotification") {
+                    if (request.type === "UpdateNotification") {
                       handleUpdateNotificatoinRequest(request)
                       return;
                     }

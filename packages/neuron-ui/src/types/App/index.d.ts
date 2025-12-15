@@ -379,7 +379,7 @@ declare namespace State {
 
   interface Perun {
     channels: PerunChannel[]
-    requests: PerunRequest[]
+    requests: Perun.ReadableMessage.Request[]
   }
 
   interface AppWithNeuronWallet {

@@ -8,11 +8,13 @@ import { channelIdToString } from 'utils/perun-wallet-wrapper/translator'
 import { perunServiceAction, showErrorMessage } from 'services/remote'
 import PerunSendPayment from 'components/PerunSendPayment'
 import { useState } from 'react'
-import { ChannelInfo, closeChannel, updateChannel } from '../../api'
+import { ChannelState, closeChannel, updateChannel } from '../../api'
+import { ChannelInfo } from 'components/PaymentChannel/hooks'
+import Token from '../Token'
 
 type ChannelCardProps = {
-  channelState?: wire.State
-  channelInfo: ChannelInfo
+  channelInfo?: ChannelInfo
+  channelState: ChannelState
   key: string
   onClose?: (channelId: string) => void
   onSend?: (channelId: string) => void
@@ -24,6 +26,7 @@ enum DialogType {
 export default function ChannelCard(props: ChannelCardProps) {
   const { channelState, channelInfo, onClose, onSend } = props
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
+  const peerAddress = channelInfo?.peer.address;
   return (
     <>
       <div className={styles.overviewItem}>
@@ -33,27 +36,43 @@ export default function ChannelCard(props: ChannelCardProps) {
             {/* <p>
             at <span className={styles.time}>0x241872 20:15:24</span>
           </p> */}
-            <p>{channelInfo.status}</p>
+            <p>Status</p>
+            {/* <p>{channelInfo.state?.isFinal === true ? "closed" : channelInfo.status}</p> */}
           </div>
-          <h2 className={styles.address}>{channelInfo.peer.address.slice(0, 16)}...{channelInfo.peer.address.slice(-16)}</h2>
+          <div className={styles.itemCell}>
+            <h2>{peerAddress ? `${peerAddress.slice(0, 6)}...${peerAddress.slice(-6)}` : ""}</h2>
+            <h2>{channelState.state.isFinal === true ? "closed" : "connected"}</h2>
+          </div>
+          {/* <h2 className={styles.address}>{channelInfo.peer.address.slice(0, 16)}...{channelInfo.peer.address.slice(-16)}</h2> */}
+          {/* <div>{channelInfo.id}</div> */}
           <div className={styles.itemCell}>
             <p>My Token Locked</p>
             <p>Funds other party</p>
           </div>
           <div className={styles.itemCell}>
-            <h2>{`${channelInfo.payload?.[channelInfo.myPayloadIndex].amount}`} CKB</h2>
-            <h2>{`${channelInfo.payload?.[channelInfo.myPayloadIndex === 0 ? 1 : 0].amount}`} CKB</h2>
+            <h2>
+              <Token
+                amount={channelState.state.allocation?.balances?.balances[0].balance[channelState.actorIdx] ?? "0"}
+                type={null}
+              />
+            </h2>
+            <h2>
+              <Token
+                amount={channelState.state.allocation?.balances?.balances[0].balance[channelState.actorIdx === 1 ? 0 : 1] ?? "0"}
+                type={null}
+              />
+            </h2>
           </div>
         </div>
 
         {
-          channelInfo.status === "connected" && (
+          !!channelState.state && channelState.state.isFinal !== true && (
             <div className={styles.overviewItemActions}>
               <Button
                 type="text"
                 data-color="error"
                 onClick={async () => {
-                  const res = await closeChannel(channelInfo.state!.id);
+                  const res = await closeChannel(channelState.id);
                   if (!isSuccessResponse(res)) {
                     showErrorMessage('Close Channel Failed', res.message as string);
                     // handleRejected(res.message as string)
@@ -81,7 +100,7 @@ export default function ChannelCard(props: ChannelCardProps) {
       {dialogType === DialogType.send && (
         <PerunSendPayment
           onConfirm={async (swapAmount) => {
-            updateChannel(channelInfo.state!, 0, BigInt(swapAmount! * 1e8))
+            updateChannel(channelState.id, 0, BigInt(swapAmount! * 1e8))
             // close
             setDialogType(undefined);
           }}

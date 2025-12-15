@@ -17,6 +17,8 @@ import { Allocation, Balances } from '../utils/perun-wallet-wrapper/wire'
 // import PerunChannelEntity from '../database/chain/entities/perun-channel'
 import { ccc, mol } from "@ckb-ccc/core"
 import participant from '../services/perun/tools/participant'
+import { parseState } from '../services/perun/tools/tool'
+import * as wire from "../utils/perun-wallet-wrapper/wire"
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
@@ -144,7 +146,6 @@ export default class PerunController {
   }
 
   async openChannel(params: PerunAPI.OpenChannelParams): Promise<Controller.Response> {
-    logger.info('PerunController: openChannel----------')
     const { me, peer, balances, challengeDuration } = params;
     const meRequestId = await participant.encode(me.publicKey, me.address);
     const peerRequestId = await participant.encode(peer.publicKey, peer.address);
@@ -161,11 +162,6 @@ export default class PerunController {
         balances: iBalances.map(balance => ({
           balance
         }))
-        // balances: [
-        //   {
-        //     balance: params.balances,
-        //   },
-        // ],
       }),
     })
 
@@ -259,11 +255,22 @@ export default class PerunController {
       }
     }
 
+    const serializedStates = res.channelStates?.states ?? [];
+    const actorIdxs = res.channelStates?.actorIdxs ?? [];
+
+    const channelInfos = serializedStates.map((serializedState, idx) => {
+      const state = parseState(serializedState as wire.State);
+
+      return {
+        id: state.id,
+        state: state,
+        actorIdx: actorIdxs[idx],
+      }
+    })
+    
     return {
       status: ResponseCode.Success,
-      result: {
-        channels: res.channelStates,
-      },
+      result: channelInfos,
     }
   }
 
