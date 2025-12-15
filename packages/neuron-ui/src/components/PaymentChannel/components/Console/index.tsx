@@ -70,7 +70,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
   useInterval(syncChannels, !!myPubKey ? 5000 : 0)
 
-  const assets = ['CKB']
+  // const assets = ['CKB']
   console.log("perun requests", requests);
   console.log("perun channle states", channelStates);
 
@@ -86,7 +86,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
         </Button>
       </div>
       <div className={styles.topWrap}>
-        <div className={clsx(styles.panel)} style={{ width: "50%" }}>
+        <div className={clsx(styles.panel)} style={{ width: "100%" }}>
           <div className="flex flex-col gap-2">
             <div>
               <div className='text-secondary mb-1'>My Address:  </div>
@@ -131,7 +131,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
             Startup Channel Service Runner
           </Button> */}
         </div>
-        <div className={clsx(styles.panel, styles.rightWrap)}>
+        {/* <div className={clsx(styles.panel, styles.rightWrap)}>
           <h2>
             {t('perun.locked-in-channels')}{' '}
             <Button
@@ -153,7 +153,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
 
       <div className={styles.panel}>
@@ -162,7 +162,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
             {t('perun.channel-creation-request')}{' '}
             {requests.length > 0 && <span className={styles.badge}>{requests.length}</span>}
           </h2>
-          <Button type="primary" onClick={() => setDialogType(DialogType.creationRequest)}>
+          <Button className={styles.createBtn} type="primary" onClick={() => setDialogType(DialogType.creationRequest)}>
             {t('perun.check')}
           </Button>
         </div>
