@@ -37,6 +37,7 @@ export const subscribe = (dispatcher: AppResponder) => {
   })
 
   CurrentNetworkIDSubject.pipe(debounceTime(50)).subscribe(({ currentNetworkID = '' }) => {
+    PerunController.getInstance().stopRunner()
     dispatcher.sendMessage('current-network-id-updated', currentNetworkID)
   })
 
