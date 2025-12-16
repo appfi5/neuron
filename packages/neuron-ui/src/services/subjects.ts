@@ -32,7 +32,8 @@ const SubjectConstructor = <T>(
     | 'show-global-dialog'
     | 'no-disk-space'
     | 'perun-requests'
-    | 'perun-channels',
+    | 'perun-channels'
+    | 'perun-runner-state',
   isMulti?: boolean
 ) => {
   return ipcRenderer
@@ -73,6 +74,7 @@ export const Migrate = SubjectConstructor<'need-migrate' | 'migrating' | 'failed
 export const NoDiskSpace = SubjectConstructor<boolean>('no-disk-space')
 export const PerunRequest = SubjectConstructor<Subject.PerunRequest>('perun-requests')
 export const PerunChannel = SubjectConstructor<Subject.PerunChannel[]>('perun-channels')
+export const PerunRunnerState = SubjectConstructor<Perun.RunnerStatus>('perun-runner-state')
 
 export default {
   DataUpdate,
@@ -91,4 +93,5 @@ export default {
   Migrate,
   PerunRequest,
   PerunChannel,
+  PerunRunnerState,
 }

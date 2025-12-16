@@ -1,6 +1,5 @@
 import EventEmitter from 'events'
-import { PerunRequestSubject } from '../models/subjects/perun'
-import PerunService from '../services/perun/service'
+import { PerunRequestSubject, PerunRunnerStateSubject } from '../models/subjects/perun'
 import logger from '../utils/logger'
 import { ResponseCode } from '../utils/const'
 import { SimpleChannelServiceClient } from '../utils/perun-wallet-wrapper/services'
@@ -19,6 +18,8 @@ import { ccc, mol } from "@ckb-ccc/core"
 import participant from '../services/perun/tools/participant'
 import { parseState } from '../services/perun/tools/tool'
 import * as wire from "../utils/perun-wallet-wrapper/wire"
+// import PerunChannelServiceRunner from '../services/perun/channel-service-runner'
+import { PerunMessageReceiver } from '../services/perun/message-receiver'
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
@@ -34,64 +35,42 @@ const equalNumPaddedHex = (num: bigint) => {
 
 export default class PerunController {
   static emiter = new EventEmitter()
+  public runnerStatus: Perun.RunnerStatus = { running: false }
   private static instance: PerunController
   private static serviceClient: SimpleChannelServiceClient
 
+  constructor() {
+    if (PerunController.instance) {
+      return PerunController.instance
+    }
+    PerunController.instance = this;
+    PerunController.serviceClient = PerunController.mkClient()
+  }
   public static getInstance() {
-    logger.info('PerunController: getInstance-----PerunController-----')
+    // logger.info('PerunController: getInstance-----PerunController-----')
     if (!PerunController.instance) {
+      console.log("create instance?")
       PerunController.instance = new PerunController()
       PerunController.serviceClient = PerunController.mkClient()
     }
-    logger.info(
-      'PerunController: getInstance-----PerunController.instance-----',
-      JSON.stringify(PerunController.instance)
-    )
-    logger.info(
-      'PerunController: getInstance-----PerunController.serviceClient-----',
-      JSON.stringify(PerunController.serviceClient)
-    )
     return PerunController.instance
   }
 
   // Create a new client for each call, in case the connection break for some reason.
   private static mkClient(): SimpleChannelServiceClient {
     logger.info('PerunController: mkClient-----SimpleChannelServiceClient--')
-    // 实际上是创建了一个 gRPC的 client，就是 ChannelServiceClient ，对应的服务器地址是
+    // channelServiceClient
     const rpcEndpoint = 'http://localhost:4322'
     return mkSimpleChannelServiceClient(defaultAddressEncoder, rpcEndpoint)
   }
 
-  public async start() {
-    logger.info('PerunController: start-----PerunService-----')
-    return PerunService.getInstance().start()
-  }
 
   public mount() {
-    logger.info('PerunController: mount-----PerunController-----')
     this.registerHandlers()
+  }
 
-    // interval(20000).subscribe(async () => {
-    //   try {
-    //     // const res = await PerunController.serviceClient.restoreChannels(new Uint8Array([]))
-    //     // if (res.accepted) {
-    //     //   for (const channel of channels) {
-    //     //     const perunChannel = PerunChannelEntity.fromObject({
-    //     //       channelId: channelIdToString(new Uint8Array(channel.id.data)),
-    //     //       allocation: channel.allocation,
-    //     //       data: channel.data,
-    //     //       isFinal: channel.isFinal,
-    //     //       version: channel.version.toString(),
-    //     //     })
-    //     //     await PerunPersistorService.updateChannel(perunChannel)
-    //     //     const res = await PerunPersistorService.getChannels()
-    //     //     PerunChannelSubject.next(res)
-    //     //   }
-    //     // }
-    //   } catch (err) {
-    //     logger.warn(`restoreChannels error: ${err}`)
-    //   }
-    // })
+  public unmount() {
+    this.stopRunner();
   }
 
   private registerHandlers = () => {
@@ -102,6 +81,12 @@ export default class PerunController {
         ...req,
         timestamp: Date.now(),
       })
+    })
+    PerunController.emiter.on('perun-service', req => {
+      logger.info('PerunController: received perun service', req)
+      if (req.type === "stop") {
+        this.stopRunner(req.message ? `${req.runner} is stopped: ${req.message}` : "");
+      }
     })
   }
 
@@ -116,11 +101,15 @@ export default class PerunController {
   }
 
   // 去 请求 ChannelService Server 的
-  public perunServiceAction(params: Controller.Params.PerunServiceActionParams): Promise<Controller.Response> {
+  public perunServiceAction(params: Perun.ServiceActionParams): Promise<Controller.Response> {
     logger.info('PerunController: perunServiceAction-----PerunController-----', params.type)
     switch (params.type) {
-      case 'startup':
-        return this.startupChannelServiceRunner(params.payload);
+      case 'start-runner':
+        return this.startRunner(params.payload);
+      case 'stop-runner':
+        return this.stopRunner();
+      // case 'get-runner-context':
+      //   return this.getRunnerContext();
       case 'open':
         return this.openChannel(params.payload)
       case 'update':
@@ -136,14 +125,58 @@ export default class PerunController {
     }
   }
 
-  async startupChannelServiceRunner(opt: Controller.Params.PerunChannelServiceRunnerStartupsParams) {
-    const flag = await PerunService.getInstance().startChannelServiceRunner(opt)
+  // async getRunnerContext(): Promise<Controller.Response> {
+  //   return {
+  //     status: ResponseCode.Success,
+  //     result: this.context,
+  //   }
+  // }
+  async startRunner(context: NonNullable<Perun.RunnerStatus['context']>) {
+    console.log("PerunController:", this.runnerStatus);
+    if (this.runnerStatus.running) {
+      throw new Error('PerunController: Perun Already Started')
+    }
+    this.runnerStatus = {
+      running: true,
+      context
+    }
+    logger.info('PerunController: start-----PerunService-----')
+    // start wallet-backend
+    await PerunMessageReceiver.getInstance().start()
+    // todo 
+    // start channel-service-runner
+
+    PerunRunnerStateSubject.next(this.runnerStatus)
+
     return {
-      status: flag ? ResponseCode.Success : ResponseCode.Fail,
-      result: flag,
-      message: flag ? "" : "Failed to start PerunChannelServiceRunner"
-    } as Controller.Response
+      status: ResponseCode.Success,
+      result: true,
+    }
   }
+
+  async stopRunner(message?: string) {
+    this.runnerStatus = {
+      running: false,
+      message: message,
+    }
+    PerunRunnerStateSubject.next(this.runnerStatus)
+    // if (!this.context) {
+    //   throw new Error('PerunController: Perun Not Started')
+    // }
+    // this.runnerStatus = { running: false }
+    // logger.info('PerunController: stop-----PerunService-----')
+    // todo
+    // stop channel-service-runner
+    // stop wallet-backend 
+    PerunMessageReceiver.getInstance().stop();
+    return {
+      status: ResponseCode.Success,
+      result: true,
+    }
+  }
+
+  // channel info api
+
 
   async openChannel(params: PerunAPI.OpenChannelParams): Promise<Controller.Response> {
     const { me, peer, balances, challengeDuration } = params;
@@ -159,9 +192,7 @@ export default class PerunController {
     const alloc = Allocation.create({
       assets: assets,
       balances: Balances.create({
-        balances: iBalances.map(balance => ({
-          balance
-        }))
+        balances: iBalances.map(balance => ({ balance }))
       }),
     })
 
@@ -195,12 +226,11 @@ export default class PerunController {
     }
   }
 
-  async updateChannel(params: Controller.Params.UpdateChannelParams): Promise<Controller.Response> {
+  async updateChannel(params: Perun.UpdateChannelParams): Promise<Controller.Response> {
     console.log("before update", params.channelId, params.index, params.amount)
     const res = await PerunController.serviceClient
       .updateChannel(channelIdFromString(params.channelId), params.index, params.amount)
       .catch(e => {
-        console.log("1", e);
         return {
           rejected: {
             reason: e.message,
@@ -208,7 +238,6 @@ export default class PerunController {
           update: undefined,
         }
       })
-    console.log("2", res);
     if (res.rejected) {
       return {
         status: ResponseCode.Fail,
@@ -226,7 +255,7 @@ export default class PerunController {
     }
   }
 
-  async closeChannel(params: Controller.Params.CloseChannelParams): Promise<Controller.Response> {
+  async closeChannel(params: Perun.CloseChannelParams): Promise<Controller.Response> {
     const res = await PerunController.serviceClient.closeChannel(params.channelId)
 
     if (res.rejected) {
@@ -244,7 +273,7 @@ export default class PerunController {
     }
   }
 
-  async getChannels(params: Controller.Params.GetChannelsParams): Promise<Controller.Response> {
+  async getChannels(params: Perun.GetChannelsParams): Promise<Controller.Response> {
     const res = await PerunController.serviceClient.getChannels(params.requester)
     // logger.info('PerunController: getChannels----------res:', res)
 
@@ -267,14 +296,14 @@ export default class PerunController {
         actorIdx: actorIdxs[idx],
       }
     })
-    
+
     return {
       status: ResponseCode.Success,
       result: channelInfos,
     }
   }
 
-  async restoreChannels(params: Controller.Params.RestoreChannelsParams): Promise<Controller.Response> {
+  async restoreChannels(params: Perun.RestoreChannelsParams): Promise<Controller.Response> {
     logger.info('PerunController: restoreChannels----------', params)
     const res = await PerunController.serviceClient.restoreChannels(params.data)
 

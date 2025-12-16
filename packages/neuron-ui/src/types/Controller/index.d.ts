@@ -195,35 +195,6 @@ declare namespace Controller {
     password: string
   }
 
-  interface OpenChannelParams {
-    me: Uint8Array
-    peer: Uint8Array
-    balances: [Uint8Array, Uint8Array]
-    challengeDuration: number
-  }
-  interface UpdateChannelParams {
-    channelId: string
-    index: number
-    amount: bigint
-  }
-  interface CloseChannelParams {
-    channelId: Uint8Array
-  }
-  interface GetChannelParams {
-    requester: Uint8Array
-  }
-  type PerunChannelServiceRunnerStartupsParams = {
-    network: "testnet" | "mainnet"
-    publicKey: string;
-  }
-  type PerunServiceActionParams =
-    | { type: "startup", payload: PerunChannelServiceRunnerStartupsParams }
-    | { type: "shutdown" }
-    | { type: "open", payload: PerunAPI.OpenChannelParams }
-    | { type: "update", payload: UpdateChannelParams }
-    | { type: "close", payload: CloseChannelParams }
-    | { type: "get", payload: GetChannelParams }
-    | { type: "restore", payload: RestoreChannelsParams }
 
   interface RespondPerunRequestParams {
     type: Perun.RequestType

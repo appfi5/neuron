@@ -1,6 +1,5 @@
 import crypto from 'crypto'
-import env from '../../env'
-import { ChildProcess, fork, spawn } from 'child_process'
+import { ChildProcess, fork } from 'child_process'
 import fs from 'fs'
 import logger from '../../utils/logger'
 import path from 'path'
@@ -12,69 +11,33 @@ import { bytes } from '@ckb-lumos/codec'
 // import NetworksService from '../networks'
 // import { LightRPC } from 'src/utils/ckb-rpc'
 // import { NetworkType } from '../../models/network'
-import generateConfigFiles, { ConfigFileOptions } from './configFiles'
-import SettingsService from '../settings'
 import { parseOpenChannelRequest } from './tools/parser.open-channel'
 import { parseSignMessageRequest } from './tools/parser.sign-message'
 import { parseSignTransactionRequest } from './tools/parser.sign-transaction'
 import { parseUpdateNotificationRequest } from './tools/parser.update-notification'
 
-const { app } = env
 
-const platform = (): string => {
-  switch (process.platform) {
-    case 'win32':
-      return 'win'
-    case 'linux':
-      return 'linux'
-    case 'darwin':
-      return 'mac'
-    default:
-      return ''
-  }
-}
-
-const binaryPath = (): string => {
-  return app.isPackaged ? path.join(path.dirname(app.getAppPath()), '..', './bin') : path.join(__dirname, '../../bin')
-}
-const channelServiceRunnerBinary = (): string => {
-  const binary = app.isPackaged ? path.resolve(binaryPath(), './channel-service-runner') : path.resolve(binaryPath(), `./${platform()}`, './channel-service-runner')
-  switch (platform()) {
-    case 'win':
-      return binary + '.exe'
-    // case 'mac':
-    //   if (app.isPackaged) {
-    //     return binary
-    //   }
-    //   return `${binary}-${process.arch === 'arm64' ? 'arm64' : 'x64'}`
-    default:
-      return binary
-  }
-}
 
 // Architecture overview:
 //
 // [ChannelService] <-via RPC-> [PerunServiceServer] <-via IPC-> [Neuron]
-export class PerunServiceRunner {
-  private static instance: PerunServiceRunner
+export class PerunMessageReceiver {
+  private static instance: PerunMessageReceiver
 
   protected runnerProcess?: ChildProcess
 
-  protected channelServiceRunner: ChildProcess | null = null
-
   private logStream?: fs.WriteStream
 
-  static getInstance(): PerunServiceRunner {
-    if (!PerunServiceRunner.instance) {
-      logger.info('Creating new PerunServiceRunner instance')
-      PerunServiceRunner.instance = new PerunServiceRunner()
+  static getInstance(): PerunMessageReceiver {
+    if (!PerunMessageReceiver.instance) {
+      PerunMessageReceiver.instance = new PerunMessageReceiver()
     }
-    return PerunServiceRunner.instance
+    return PerunMessageReceiver.instance
   }
 
   async start() {
     if (this.runnerProcess) {
-      logger.info('PerunServiceRunner already started, shutting down first...')
+      logger.info('PerunMessageReceiver already started, shutting down first...')
       await this.stop()
     }
 
@@ -84,26 +47,33 @@ export class PerunServiceRunner {
       this.logStream = fs.createWriteStream('perun-service.log')
     }
 
-    this.runnerProcess.stderr &&
-      this.runnerProcess.stderr.on('data', data => {
-        logger.error(`PerunServiceRunner stderr: ${data}`)
-        this.logStream?.write(data)
-      })
+    this.runnerProcess.stderr?.on('data', data => {
+      logger.error(`PerunMessageReceiver stderr: ${data}`)
+      this.logStream?.write(data)
+    })
 
-    this.runnerProcess.stdout &&
-      this.runnerProcess.stdout.on('data', data => {
-        logger.info(`PerunServiceRunner stdout: ${data}`)
-        this.logStream?.write(data)
-      })
+    this.runnerProcess.stdout?.on('data', data => {
+      logger.info(`PerunMessageReceiver stdout: ${data}`)
+      this.logStream?.write(data)
+    })
 
     this.runnerProcess.on('error', error => {
-      logger.error('PerunServiceRunner error:', error)
+      logger.error('PerunMessageReceiver error:', error)
       this.runnerProcess?.kill()
       this.runnerProcess = undefined
+      PerunController.emiter.emit("perun-service", {
+        runner: "message-receiver",
+        type: 'stop',
+        message: error.message
+      })
     })
 
     this.runnerProcess.on('close', code => {
-      logger.info(`PerunServiceRunner exited with code ${code}`)
+      logger.info(`PerunMessageReceiver exited with code ${code}`)
+      PerunController.emiter.emit("perun-service", {
+        runner: "message-receiver",
+        type: 'stop'
+      })
       this.runnerProcess = undefined
     })
 
@@ -127,7 +97,7 @@ export class PerunServiceRunner {
         logger.info('Unknown IPC message type', message)
       }
     }
-    logger.info('PerunServiceRunner received unexpected IPC message', message)
+    logger.info('PerunMessageReceiver received unexpected IPC message', message)
   }
 
   // private ipcReturn(type: string, req: unknown, requestId?: string) {
@@ -135,10 +105,10 @@ export class PerunServiceRunner {
   //   return new Promise<void>((resolve, reject) => {
   //     this.runnerProcess?.send({ type, req, requestId }, error => {
   //       if (error) {
-  //         logger.error('PerunServiceRunner failed to send IPC message', error)
+  //         logger.error('PerunMessageReceiver failed to send IPC message', error)
   //         reject(error)
   //       } else {
-  //         logger.info('PerunServiceRunner successfully sent IPC message')
+  //         logger.info('PerunMessageReceiver successfully sent IPC message')
   //         resolve()
   //       }
   //     })
@@ -150,10 +120,10 @@ export class PerunServiceRunner {
     return new Promise<void>((resolve, reject) => {
       this.runnerProcess?.send({ type, req, requestId }, error => {
         if (error) {
-          logger.error('PerunServiceRunner failed to send IPC message', error)
+          logger.error('PerunMessageReceiver failed to send IPC message', error)
           reject(error)
         } else {
-          logger.info('PerunServiceRunner successfully sent IPC message')
+          logger.info('PerunMessageReceiver successfully sent IPC message')
           resolve()
         }
       })
@@ -182,10 +152,8 @@ export class PerunServiceRunner {
 
         // Validate the request.
         // this.validateOpenChannelRequest(req)
-        logger.info('runner: handleOpenChannelRequest-----------PerunServiceRunner received openChannelRequest', _req);
         const nonceShare = new Uint8Array(32)
 
-        // 处理这个，比如让用户通过请求？？
         crypto.getRandomValues(nonceShare)
         const responseData: ResponseType = {
           nonceShare
@@ -200,7 +168,7 @@ export class PerunServiceRunner {
   private handleUpdateNotificationRequest(req: Perun.SerializedMessage.UpdateNotificationRequest, requestId: string) {
     type ResponseType = Awaited<ReturnType<WalletBackend<{}>["updateNotificationRequest"]>>
     const readableReq = parseUpdateNotificationRequest(req);
-    logger.info('PerunServiceRunner received updateNotificationRequest', readableReq)
+    logger.info('PerunMessageReceiver received updateNotificationRequest', readableReq)
     return new Promise<void>((resolve, reject) => {
       if (
         !PerunController.emiter.emit('perun-request', {
@@ -302,7 +270,7 @@ export class PerunServiceRunner {
   }
 
   private handleSignTransactionRequest(_req: Perun.SerializedMessage.SignTransactionRequest, requestId: string) {
-    // logger.info('PerunServiceRunner received signTransactionRequest prev', _req)
+    // logger.info('PerunMessageReceiver received signTransactionRequest prev', _req)
     return new Promise<void>(async (resolve, reject) => {
       type ResponseType = Awaited<ReturnType<WalletBackend<{}>["signTransactionRequest"]>>
       const req = await parseSignTransactionRequest(_req)
@@ -310,11 +278,11 @@ export class PerunServiceRunner {
           this.ipcResponse('SignTransaction', requestId, { rejected: { reason: `sign transaction error: ${e.message}` } } as ResponseType)
           reject(e);
         })
-        
+
       // 这里看出来是谁的请求
       // 是 开？ 是关？ 是更新？
-      logger.info('PerunServiceRunner received signTransactionRequest', req)
-      
+      logger.info('PerunMessageReceiver received signTransactionRequest', req)
+
       if (
         !PerunController.emiter.emit('perun-request', {
           type: 'SignTransaction',
@@ -351,74 +319,6 @@ export class PerunServiceRunner {
     this.runnerProcess?.kill()
   }
 
-  // channel service runner
-
-  async startChannelServiceRunner(opt: ConfigFileOptions) {
-    if (this.channelServiceRunner) {
-      logger.info('ChannelServiceRunner is already running')
-      return
-    }
-
-    const { config, contractCellDeps, systemScripts } = generateConfigFiles(opt)
-
-    const perunFolderPath = SettingsService.getInstance().getPeurnDataFolderPath();
-    const pathWithNetwork = path.join(perunFolderPath, opt.network);
-    fs.mkdirSync(pathWithNetwork, { recursive: true });
-
-    const file_config_path = path.join(pathWithNetwork, 'config.json');
-    fs.writeFileSync(file_config_path, JSON.stringify(config, null, 2));
-
-    const file_contractCellDeps_path = path.join(pathWithNetwork, 'contracts_cell_deps.json');
-    fs.writeFileSync(file_contractCellDeps_path, JSON.stringify(contractCellDeps, null, 2));
-
-    const file_systemScripts_path = path.join(pathWithNetwork, 'system_scripts.json');
-    fs.writeFileSync(file_systemScripts_path, JSON.stringify(systemScripts, null, 2));
-    console.log("args", [
-      // --config           config.json
-      '--config',
-      file_config_path,
-      // --system_scripts   default_scripts.json
-      '--system_scripts',
-      file_systemScripts_path,
-      // --migration_data   contracts_cell_deps.json
-      '--migration_data',
-      file_contractCellDeps_path,
-    ].join(" "))
-    const scrProcess = spawn(channelServiceRunnerBinary(), [
-      // --config           config.json
-      '--config',
-      `"${file_config_path}"`,
-      // --system_scripts   default_scripts.json
-      '--system_scripts',
-      `"${file_systemScripts_path}"`,
-      // --migration_data   contracts_cell_deps.json
-      '--migration_data',
-      `"${file_contractCellDeps_path}"`,
-    ])
-
-    scrProcess.stderr?.on('data', data => {
-      logger.error('Perun Service Runner:\tChannelServiceRunner fail:', data.toString())
-    })
-
-    scrProcess.on("error", error => {
-      logger.error('Perun Service Runner:\tChannelServiceRunner fail:', error)
-    })
-
-    scrProcess.once("close", () => {
-      logger.info('Perun Service Runner:\tChannelServiceRunner closed')
-      this.channelServiceRunner = null;
-    })
-  }
-
-  async stopChannelServiceRunner() {
-    if (!this.channelServiceRunner) {
-      logger.info('ChannelServiceRunner is not running')
-      return
-    }
-
-    this.channelServiceRunner.kill()
-    // this.channelServiceRunner = null
-  }
 
   // TODO: CKBNode probably executes its starting twice.
 }

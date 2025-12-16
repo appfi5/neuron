@@ -46,6 +46,7 @@ import {
   isSuccessResponse,
   clsx,
   getParticipantByAddressAndPubkey,
+  isMainnet,
 } from 'utils'
 import { PasswordDialog } from 'components/SignAndVerify'
 
@@ -55,6 +56,7 @@ import { useTranslation } from 'react-i18next'
 import Button from 'widgets/Button'
 import PerunConsole from './components/Console'
 import AddressSelector from './components/AddressSelector'
+import { useRequest } from 'ahooks'
 
 
 
@@ -64,11 +66,34 @@ const PaymentChannel = () => {
     chain: { networkID },
     settings: { networks },
     wallet,
+    perun: { runnerState }
   } = useGlobalState()
   const [t, _] = useTranslation()
-  const [enable, setEnable] = useState(false);
-  const [publicKey, setMyPubKey] = useState('')
-  const [address, setMyAddress] = useState('')
+  const [enable, setEnable] = useState(runnerState.running);
+  const [publicKey, setMyPubKey] = useState(runnerState.context?.publicKey ?? "")
+  const [address, setMyAddress] = useState(runnerState.context?.address ?? "")
+  const isTestnet = !isMainnet(networks, networkID)
+
+  const { loading, run: startRunner } = useRequest(async (cfg: NonNullable<Perun.RunnerStatus['context']>) => {
+    const res = await perunServiceAction({ type: "start-runner", payload: cfg })
+    return res;
+  }, {
+    manual: true,
+  })
+
+  useEffect(() => {
+    if(!enable && runnerState.running) {
+      setEnable(true)
+    }
+    if (enable && !runnerState.running) {
+      setEnable(false)
+    }
+    if (enable && !runnerState.running && runnerState.message) {
+      showErrorMessage('Error', runnerState.message);
+    }
+  }, [enable, runnerState.running, runnerState.message])
+
+
   return (
     <PageContainer
       head={
@@ -103,10 +128,20 @@ const PaymentChannel = () => {
 
               <Button
                 type="primary"
+                loading={loading}
                 className={styles.startButton}
-                // todo start channel-service-runner
-                // then invoke restore-channel
-                onClick={() => { setEnable(true) }}
+                onClick={async () => {
+                  if (!isTestnet) {
+                    showErrorMessage('Error', t('perun.testnet-only'))
+                    return;
+                  }
+                  await startRunner({
+                    walletId: wallet.id,
+                    publicKey: publicKey,
+                    address: address,
+                    network: isTestnet ? 'testnet' : 'mainnet',
+                  })
+                }}
               >
                 Start
               </Button>
@@ -116,8 +151,6 @@ const PaymentChannel = () => {
             <PerunConsole
               publicKey={publicKey}
               address={address}
-              // todo
-              onClose={() =>{}}
             />
           )
       }

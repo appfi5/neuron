@@ -17,8 +17,9 @@ import startMonitor, { stopMonitor } from '../../services/monitor'
 import { clearCkbNodeCache } from '../../services/ckb-runner'
 import ShowGlobalDialogSubject from '../../models/subjects/show-global-dialog'
 import NoDiskSpaceSubject from '../../models/subjects/no-disk-space'
-import { PerunRequestSubject, PerunChannelSubject } from '../../models/subjects/perun'
+import { PerunRequestSubject, PerunChannelSubject, PerunRunnerStateSubject } from '../../models/subjects/perun'
 import logger from '../../utils/logger'
+import PerunController from '../perun'
 
 interface AppResponder {
   sendMessage: (channel: string, arg: any) => void
@@ -62,6 +63,11 @@ export const subscribe = (dispatcher: AppResponder) => {
     dispatcher.sendMessage('perun-channels', channels)
   })
 
+  PerunRunnerStateSubject.pipe(debounceTime(50)).subscribe(state => {
+    logger.info('subscribe: PerunRunnerStateSubject forwarding backend signing request to the renderer process')
+    dispatcher.sendMessage('perun-runner-state', state)
+  })
+
   CommandSubject.subscribe(params => {
     if (params.dispatchToUI) {
       BrowserWindow.getFocusedWindow()?.webContents.send('command', params)
@@ -83,6 +89,7 @@ export const subscribe = (dispatcher: AppResponder) => {
   CurrentWalletSubject.pipe(debounceTime(50)).subscribe(async params => {
     dispatcher.updateMenu()
     if (params.currentWallet) {
+      PerunController.getInstance().stopRunner()
       DataUpdateSubject.next({ dataType: 'current-wallet', actionType: 'update' })
     }
     dispatcher.updateWindowTitle()

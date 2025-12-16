@@ -5,7 +5,7 @@ import SettingsService from "../settings";
 
 const pathToFile = (...pathes: string[]) => path.join(SettingsService.getInstance().getPeurnDataFolderPath(), ...pathes);
 
-export type ConfigFileOptions = Controller.Params.PerunChannelServiceRunnerStartupsParams
+export type ConfigFileOptions = NonNullable<Perun.RunnerStatus['context']>
 export default function generateConfigFiles(opt: ConfigFileOptions) {
   const config = genConfig(opt);
   const contractCellDeps = genContractCellDeps();

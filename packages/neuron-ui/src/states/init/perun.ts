@@ -1,6 +1,9 @@
 export const perunState: State.Perun = {
-  channels: [],
+  // channels: [],
   requests: [],
+  runnerState: {
+    running: false,
+  }
 }
 
 export default perunState

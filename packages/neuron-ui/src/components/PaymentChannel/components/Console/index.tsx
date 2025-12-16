@@ -1,9 +1,9 @@
 import { useState as useGlobalState } from 'states'
 import { useTranslation } from 'react-i18next'
 import { useInterval, useRequest } from 'ahooks'
-import { getChannels, openChannel } from '../../api'
+import { getChannels, openChannel, restoreChannels } from '../../api'
 import { useEffect, useMemo, useState } from 'react'
-import { getCurrentWalletAccountExtendedPubKey, showErrorMessage } from 'services/remote'
+import { getCurrentWalletAccountExtendedPubKey, perunServiceAction, showErrorMessage } from 'services/remote'
 import styles from '../../perun.module.scss'
 import {
   AddSimple,
@@ -46,11 +46,10 @@ enum DialogType {
 type PerunConsoleProps = {
   publicKey: string
   address: string
-  onClose?: () => void
 }
 
 export default function PerunConsole(props: PerunConsoleProps) {
-  const { publicKey: myPubKey, address: myAddress, onClose } = props
+  const { publicKey: myPubKey, address: myAddress } = props
   const {
     wallet,
     perun: { requests }, // channels
@@ -58,9 +57,11 @@ export default function PerunConsole(props: PerunConsoleProps) {
   const [t] = useTranslation()
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
   const channelInfoMap = useChannelInfoMap()
+  
   // const [pendingChannels, setPendingChannels] = useState<ChannelInfo[]>([])
   // const [channelMap, setChannelMap] = useState<Record<string, ChannelInfo>>({})
   const { data: channelStates = [], run: syncChannels } = useRequest(async () => {
+    console.log("?")
     const list = await getChannels(myPubKey, myAddress)
     return list;
   }, {
@@ -70,6 +71,11 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
   useInterval(syncChannels, !!myPubKey ? 5000 : 0)
 
+
+  useEffect(() => {
+    restoreChannels()
+  }, [])
+
   // const assets = ['CKB']
   console.log("perun requests", requests);
   console.log("perun channle states", channelStates);
@@ -77,7 +83,9 @@ export default function PerunConsole(props: PerunConsoleProps) {
   return (
     <div className={styles.container}>
       <div className='flex flex-row justify-between items-center mb-4'>
-        <Button type="danger" className={styles.createBtn} onClick={() => { }}>
+        <Button type="danger" className={styles.createBtn} onClick={() => {
+          perunServiceAction({ type: "stop-runner" })
+        }}>
           Exit
         </Button>
         <Button type="primary" className={styles.createBtn} onClick={() => setDialogType(DialogType.openChannel)}>

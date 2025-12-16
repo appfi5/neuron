@@ -93,7 +93,7 @@ export default class ApiController {
     this.#registerHandlers()
 
     await this.#networksController.start()
-    await this.#perunController.start()
+    // await this.#perunController.start()
 
     nativeTheme.themeSource = SettingsService.getInstance().themeSource
   }
@@ -870,7 +870,7 @@ export default class ApiController {
       return this.#perunController.respondPerunRequest(params)
     })
 
-    handle('perun-service-action', async (_, params: Controller.Params.PerunServiceActionParams) => {
+    handle('perun-service-action', async (_, params: Perun.ServiceActionParams) => {
       return this.#perunController.perunServiceAction(params)
     })
 

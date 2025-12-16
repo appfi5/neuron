@@ -2,6 +2,55 @@
 
 
 declare namespace Perun {
+  // todo fix
+  interface UpdateChannelParams {
+    channelId: string
+    index: number
+    amount: bigint
+  }
+  // todo fix
+  interface CloseChannelParams {
+    channelId: Uint8Array
+  }
+  // todo fix
+  interface GetChannelsParams {
+    requester: Uint8Array
+  }
+  // todo fix
+  interface RestoreChannelsParams {
+    data: Uint8Array
+  }
+  type ServiceActionParams =
+    // runner api
+    | { type: "start-runner", payload: NonNullable<Perun.RunnerStatus['context']> }
+    | { type: "stop-runner" }
+    // | { type: "get-runner-context" }
+    // service api
+    | { type: "open", payload: PerunAPI.OpenChannelParams }
+    | { type: "update", payload: UpdateChannelParams }
+    | { type: "close", payload: CloseChannelParams }
+    | { type: "get", payload: GetChannelParams }
+    | { type: "restore", payload: RestoreChannelsParams }
+    // channel info api
+    | { type: "get-channel-infos" }
+    | { type: "add-channel-info" }
+    | { type: "remove-channel-info" }
+  type RunnerStatus = {
+    running: boolean;
+    message?: string;
+    context?: {
+      walletId: string,
+      address: string,
+      publicKey: string,
+      network: "testnet" | "mainnet",
+      // udtInfo
+      udtScript?: {
+        codeHash: string,
+        hashType: string,
+        args: string
+      }
+    }
+  }
 
   type RequestType =
     | 'OpenChannel'

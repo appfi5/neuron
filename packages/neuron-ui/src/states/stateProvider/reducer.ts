@@ -77,6 +77,7 @@ export enum PaymentChannelActions {
 
   UpdatePerunRequest = 'UpdatePerunRequest',
   UpdatePerunChannel = 'UpdatePerunChannel',
+  UpdateRunnerState = 'UpdateRunnerState',
 }
 
 export type StateAction =
@@ -129,18 +130,22 @@ export type StateAction =
   | { type: AppActions.SignVerify; payload: string }
   | { type: AppActions.UpdateConsumeCells; payload?: { outPoint: OutPoint; capacity: string }[] }
   | { type: AppActions.SetLockWindowInfo; payload: Required<State.App>['lockWindowInfo'] }
+  // | {
+  //   type: PaymentChannelActions.UpdatePerunState
+  //   payload: State.Perun
+  // }
   | {
-      type: PaymentChannelActions.UpdatePerunState
-      payload: State.Perun
-    }
+    type: PaymentChannelActions.UpdatePerunRequest
+    payload: Perun.ReadableMessage.Request[]
+  }
   | {
-      type: PaymentChannelActions.UpdatePerunRequest
-      payload: Perun.ReadableMessage.Request[]
-    }
+    type: PaymentChannelActions.UpdatePerunChannel
+    payload: State.PerunChannel[]
+  }
   | {
-      type: PaymentChannelActions.UpdatePerunChannel
-      payload: State.PerunChannel[]
-    }
+    type: PaymentChannelActions.UpdateRunnerState
+    payload: Perun.RunnerStatus
+  }
 
 export type StateDispatch = React.Dispatch<StateAction> // TODO: add type of payload
 
@@ -341,7 +346,7 @@ export const reducer = produce((state: Draft<State.AppWithNeuronWallet>, action:
        */
       state.app.showTopAlert =
         state.app.notifications.findIndex(message => message.timestamp === action.payload) ===
-        state.app.notifications.length - 1
+          state.app.notifications.length - 1
           ? false
           : state.app.showTopAlert
       state.app.notifications = state.app.notifications.filter(({ timestamp }) => timestamp !== action.payload)
@@ -416,9 +421,9 @@ export const reducer = produce((state: Draft<State.AppWithNeuronWallet>, action:
     case AppActions.SetPageNotice: {
       state.app.pageNotice = action.payload
         ? {
-            ...action.payload,
-            index: (state.app.pageNotice?.index ?? 0) + 1,
-          }
+          ...action.payload,
+          index: (state.app.pageNotice?.index ?? 0) + 1,
+        }
         : action.payload
       break
     }
@@ -441,9 +446,12 @@ export const reducer = produce((state: Draft<State.AppWithNeuronWallet>, action:
       state.perun.requests = action.payload
       break
     }
-
-    case PaymentChannelActions.UpdatePerunChannel: {
-      state.perun.channels = action.payload
+    // case PaymentChannelActions.UpdatePerunChannel: {
+    //   state.perun.channels = action.payload
+    //   break
+    // }
+    case PaymentChannelActions.UpdateRunnerState: {
+      state.perun.runnerState = action.payload
       break
     }
 

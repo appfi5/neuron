@@ -42,4 +42,4 @@ export const verifyMessage = remoteApi<Controller.VerifyMessageParams, 'old-sign
 
 // Perun
 export const respondPerunRequest = remoteApi<Controller.RespondPerunRequestParams>('respond-perun-request')
-export const perunServiceAction = remoteApi<Controller.PerunServiceActionParams>('perun-service-action')
+export const perunServiceAction = remoteApi<Perun.ServiceActionParams>('perun-service-action')

@@ -378,8 +378,9 @@ declare namespace State {
   }
 
   interface Perun {
-    channels: PerunChannel[]
+    // channels: PerunChannel[]
     requests: Perun.ReadableMessage.Request[]
+    runnerState: Perun.RunnerStatus
   }
 
   interface AppWithNeuronWallet {

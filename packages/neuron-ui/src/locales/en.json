@@ -837,6 +837,7 @@
       "export": "Export Tx"
     },
     "perun": {
+      "testnet-only": "Perun is only available on testnet",
       "no-data": "No data",
       "create-new-channel": "Create New Channel",
       "of-open-channels": "#of open channels",

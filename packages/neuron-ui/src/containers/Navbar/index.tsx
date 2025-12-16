@@ -20,6 +20,7 @@ import {
   AppUpdater as AppUpdaterSubject,
   PerunRequest as PerunRequestSubject,
   PerunChannel as PerunChannelSubject,
+  PerunRunnerState as PerunRunnerStateSubject,
 } from 'services/subjects'
 
 import Badge from 'widgets/Badge'
@@ -105,10 +106,15 @@ const Navbar = () => {
       dispatch({ type: PaymentChannelActions.UpdatePerunChannel, payload })
     })
 
+    const perunRunnerStateSubscription = PerunRunnerStateSubject.subscribe((payload: Perun.RunnerStatus) => {
+      dispatch({ type: PaymentChannelActions.UpdateRunnerState, payload })
+    })
+
     return () => {
       appUpdaterSubscription.unsubscribe()
       perunRequestSubscription.unsubscribe()
       perunChannelSubscription.unsubscribe()
+      perunRunnerStateSubscription.unsubscribe()
     }
   }, [dispatch])
 
