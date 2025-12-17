@@ -99,6 +99,7 @@ export default function ChannelCard(props: ChannelCardProps) {
       </div>
       {dialogType === DialogType.send && (
         <PerunSendPayment
+          maxAmount={channelState.state.allocation?.balances?.balances[0].balance[channelState.actorIdx] ?? "0"}
           onConfirm={async (swapAmount) => {
             updateChannel(channelState.id, 0, BigInt(swapAmount! * 1e8))
             // close

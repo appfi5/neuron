@@ -1,54 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 
 import { useState as useGlobalState } from 'states'
-import { bytes } from '@ckb-lumos/codec'
-import { blockchain } from '@ckb-lumos/base'
-import Dialog from 'widgets/Dialog'
-import Table, { TableProps } from 'widgets/Table'
 import PageContainer from 'components/PageContainer'
 import {
   PerunIcon,
-  AddSimple,
-  DetailIcon,
-  CkbIcon,
-  InfoCircleOutlined,
-  DepositTimeSort,
-  PerunSend,
-  PerunClose,
-  LineDownArrow,
 } from 'widgets/Icons/icon'
-import TableNoData from 'widgets/Icons/TableNoData.png'
-import { type CKBComponents } from '@ckb-lumos/lumos/rpc'
-import {
-  SerializeOffChainParticipant,
-  SerializeSEC1EncodedPubKey,
-} from 'utils/perun-wallet-wrapper/ckb/serialization'
-import { channelIdToString, channelIdFromString } from 'utils/perun-wallet-wrapper/translator'
-import * as wire from 'utils/perun-wallet-wrapper/wire'
 
-import { ControllerResponse } from 'services/remote/remoteApiWrapper'
 import {
-  OfflineSignStatus,
-  OfflineSignType,
-  getCurrentWalletAccountExtendedPubKey,
   perunServiceAction,
-  respondPerunRequest,
-  signRawMessage,
-  signTransactionOnly,
   showErrorMessage,
 } from 'services/remote'
 import {
-  addressToScript,
-  scriptToAddress,
-  bytesToHex,
-  ErrorCode,
-  errorFormatter,
-  isSuccessResponse,
-  clsx,
-  getParticipantByAddressAndPubkey,
   isMainnet,
 } from 'utils'
-import { PasswordDialog } from 'components/SignAndVerify'
 
 import styles from './perun.module.scss'
 
@@ -57,6 +21,7 @@ import Button from 'widgets/Button'
 import PerunConsole from './components/Console'
 import AddressSelector from './components/AddressSelector'
 import { useRequest } from 'ahooks'
+import { restoreChannels } from './api'
 
 
 
@@ -84,6 +49,7 @@ const PaymentChannel = () => {
   useEffect(() => {
     if(!enable && runnerState.running) {
       setEnable(true)
+      restoreChannels();
     }
     if (enable && !runnerState.running) {
       setEnable(false)

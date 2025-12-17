@@ -2,6 +2,14 @@
 
 
 declare namespace Perun {
+
+  type ChannelInfo = {
+    channelId: string;
+    me: PerunAPI.PeerUser;
+    peer: PerunAPI.PeerUser;
+    payload: PerunAPI.OpenChannelParams['balances'],
+    myPayloadIndex: 0 | 1;
+  }
   // todo fix
   interface UpdateChannelParams {
     channelId: string
@@ -32,9 +40,9 @@ declare namespace Perun {
     | { type: "get", payload: GetChannelParams }
     | { type: "restore", payload: RestoreChannelsParams }
     // channel info api
-    | { type: "get-channel-infos" }
-    | { type: "add-channel-info" }
-    | { type: "remove-channel-info" }
+    | { type: "get-channel-infos", payload: { address: string } }
+    | { type: "add-channel-info", payload: ChannelInfo }
+    | { type: "remove-channel-info", payload: { channelId: string } }
   type RunnerStatus = {
     running: boolean;
     message?: string;

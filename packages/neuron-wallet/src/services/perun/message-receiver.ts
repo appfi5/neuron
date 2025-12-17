@@ -17,6 +17,7 @@ import { parseSignTransactionRequest } from './tools/parser.sign-transaction'
 import { parseUpdateNotificationRequest } from './tools/parser.update-notification'
 
 
+// const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Architecture overview:
 //
@@ -41,44 +42,53 @@ export class PerunMessageReceiver {
       await this.stop()
     }
 
-    this.runnerProcess = this.spawnProcess()
+    return new Promise<void>(async (resolve) => {
+      this.runnerProcess = this.spawnProcess()
 
-    if (!this.logStream) {
-      this.logStream = fs.createWriteStream('perun-service.log')
-    }
+      if (!this.logStream) {
+        this.logStream = fs.createWriteStream('perun-service.log')
+      }
+      
+      this.runnerProcess.stderr?.on('data', data => {
+        logger.error(`PerunMessageReceiver stderr: ${data}`)
+        this.logStream?.write(data)
+      })
 
-    this.runnerProcess.stderr?.on('data', data => {
-      logger.error(`PerunMessageReceiver stderr: ${data}`)
-      this.logStream?.write(data)
-    })
+      this.runnerProcess.stdout?.on('data', data => {
+        logger.info(`PerunMessageReceiver stdout: ${data}`)
+        this.logStream?.write(data)
+      })
 
-    this.runnerProcess.stdout?.on('data', data => {
-      logger.info(`PerunMessageReceiver stdout: ${data}`)
-      this.logStream?.write(data)
-    })
+      this.runnerProcess.on('error', error => {
+        logger.error('PerunMessageReceiver error:', error)
+        this.runnerProcess?.kill()
+        this.runnerProcess = undefined
+        PerunController.emiter.emit("perun-service", {
+          runner: "message-receiver",
+          type: 'stop',
+          message: error.message
+        })
+      })
 
-    this.runnerProcess.on('error', error => {
-      logger.error('PerunMessageReceiver error:', error)
-      this.runnerProcess?.kill()
-      this.runnerProcess = undefined
-      PerunController.emiter.emit("perun-service", {
-        runner: "message-receiver",
-        type: 'stop',
-        message: error.message
+      this.runnerProcess.on('close', code => {
+        logger.info(`PerunMessageReceiver exited with code ${code}`)
+        PerunController.emiter.emit("perun-service", {
+          runner: "message-receiver",
+          type: 'stop'
+        })
+        this.runnerProcess = undefined
+      })
+
+      // 监听ipc 消息
+      this.runnerProcess.on('message', (message) => {
+        if((message as any).type === "ready") {
+          resolve();
+          console.log("Wallet Backend ready");
+          return;
+        }
+        return this.ipcMessageHandler(message as Perun.SerializedMessage.Request)
       })
     })
-
-    this.runnerProcess.on('close', code => {
-      logger.info(`PerunMessageReceiver exited with code ${code}`)
-      PerunController.emiter.emit("perun-service", {
-        runner: "message-receiver",
-        type: 'stop'
-      })
-      this.runnerProcess = undefined
-    })
-
-    // 监听ipc 消息
-    this.runnerProcess.on('message', this.ipcMessageHandler)
   }
 
   // 通过 ipc收到 backend 发来的 message

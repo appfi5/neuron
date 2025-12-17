@@ -12,6 +12,7 @@ function main() {
     server
       .listen(localUrl)
       .then(port => {
+        process.send?.({ type: 'ready' })
         logger.log(`Wallet service listening on localhost on port ${port}`)
       })
       .catch(error => {

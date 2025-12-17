@@ -882,7 +882,10 @@
       "rejection-reason": "Rejection reason",
       "ok": "Okay",
       "enter-amount": "Please enter the amount you want to swap",
-      "state": "State"
+      "state": "State",
+      "message": {
+        "max-amount": "Amount cannot exceed {{amount}}"
+      }
     },
     "lock-info-dialog": {
       "address-info": "Address Information",

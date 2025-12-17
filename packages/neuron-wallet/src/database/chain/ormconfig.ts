@@ -75,6 +75,8 @@ import { AddUdtType1720089814860 } from './migrations/1720089814860-AddUdtType'
 import { AddLockCodeHash1744960856059, checkLockCodeHash } from './migrations/1744960856059-AddLockCodeHash'
 import { PerunChannel1752560937986 } from './migrations/1752560937986-PerunChannel'
 import { PerunActivity1752560937986 } from './migrations/1752560937986-PerunActivity'
+import { PerunChannelInfo1765871943361 } from './migrations/1765871943361-PerunChannelInfo'
+import PerunChannelInfo from './entities/perun-channel-info'
 
 export const CONNECTION_NOT_FOUND_NAME = 'ConnectionNotFoundError'
 export type ConnectionName = 'light' | 'full'
@@ -151,6 +153,7 @@ const getConnectionOptions = (genesisBlockHash: string, connectionName: Connecti
       AmendTransaction,
       PerunChannel,
       PerunActivity,
+      PerunChannelInfo,
     ],
     migrations: [
       InitMigration1566959757554,
@@ -198,6 +201,7 @@ const getConnectionOptions = (genesisBlockHash: string, connectionName: Connecti
       AddUdtType1720089814860,
       PerunChannel1752560937986,
       PerunActivity1752560937986,
+      PerunChannelInfo1765871943361,
     ],
     subscribers: [
       AddressSubscribe,

@@ -115,7 +115,7 @@ export class ServiceClient implements SimpleChannelServiceClient {
     const res = await this.channelServiceClient.getChannels(req);
 
     if (res.rejected) {
-      console.log("Get channels request rejected:");
+      console.log("Get channels request rejected:", res);
       return res;
     }
     if (!res.channelStates) {

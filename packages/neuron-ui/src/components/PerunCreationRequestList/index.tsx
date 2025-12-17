@@ -81,7 +81,6 @@ export const PerunCreationRequestList = (props: PerunRequestListProps) => {
         return (
           <>
             <h3 className='my-0'>Open Channel Request from {address.slice(0, 10)}...{address.slice(-10)}</h3>
-            <p>{`Channel ID: ${request.proposalId}`}</p>
             <div className='flex flex-row gap-4 mt-2'>
               <div>
                 <div className='text-secondary'>My Token Locked</div>

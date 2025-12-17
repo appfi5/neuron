@@ -7,17 +7,26 @@ import { openExternal, MultisigConfig } from 'services/remote'
 import { localNumberFormatter, shannonToCKBFormatter } from 'utils'
 import Dialog from 'widgets/Dialog'
 import styles from './perunSendPayment.module.scss'
+import Big from 'big.js'
 
 
 const NERVOS_DAO_RFC_URL =
   'https://www.github.com/nervosnetwork/rfcs/blob/master/rfcs/0023-dao-deposit-withdraw/0023-dao-deposit-withdraw.md'
 
-const PerunSendPayment = ({ onClose, onConfirm }: { onClose: () => void, onConfirm: (swapAmount: number) => void }) => {
+type PerunSendPaymentProps = {
+  onClose: () => void
+  onConfirm: (amount: number) => void
+  // bigint string
+  maxAmount: string
+}
+const PerunSendPayment = (props: PerunSendPaymentProps) => {
+  const { onClose, onConfirm, maxAmount } = props
   const [t, { language }] = useTranslation()
   const [errorMessage, setErrorMessage] = useState('')
   const [updateAmount, setUpdateAmount] = useState<number>(0)
 
   const handleUpdateAmountChange = (am: string) => {
+    setErrorMessage('')
     const amountNum = parseFloat(am)
     if (Number.isNaN(amountNum)) {
       return
@@ -40,6 +49,12 @@ const PerunSendPayment = ({ onClose, onConfirm }: { onClose: () => void, onConfi
       show
       title={t('perun.send-payment')} onCancel={onClose} className={styles.container}
       onConfirm={() => {
+
+        const maxAmountVal = new Big(maxAmount).div(10 ** 8)
+        if (updateAmount > maxAmountVal.toNumber()) {
+          setErrorMessage(t('perun.message.max-amount', { amount: `${maxAmountVal} CKB` }))
+          return
+        }
         onConfirm(updateAmount);
       }}
     >

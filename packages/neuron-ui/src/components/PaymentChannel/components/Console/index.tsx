@@ -56,8 +56,8 @@ export default function PerunConsole(props: PerunConsoleProps) {
   } = useGlobalState()
   const [t] = useTranslation()
   const [dialogType, setDialogType] = useState<DialogType | undefined>(undefined)
-  const channelInfoMap = useChannelInfoMap()
-  
+  const channelInfoMap = useChannelInfoMap(myAddress)
+
   // const [pendingChannels, setPendingChannels] = useState<ChannelInfo[]>([])
   // const [channelMap, setChannelMap] = useState<Record<string, ChannelInfo>>({})
   const { data: channelStates = [], run: syncChannels } = useRequest(async () => {
@@ -73,7 +73,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
 
 
   useEffect(() => {
-    restoreChannels()
+    syncChannels()
   }, [])
 
   // const assets = ['CKB']
@@ -222,7 +222,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
           channelInfoMap={channelInfoMap}
           onOpenChannel={(request) => {
             // todo convert request.initBals to payload
-            const payload: PerunAPI.OpenChannelParams['balances'] = [{ type: null, balances: ["1", "2"]}]
+            const payload: PerunAPI.OpenChannelParams['balances'] = [{ type: null, balances: ["1", "2"] }]
             const channelInfo: ChannelInfo = {
               channelId: UNMATCH_CHANNEL_ID,
               me: {
@@ -237,7 +237,7 @@ export default function PerunConsole(props: PerunConsoleProps) {
           }}
           onUpdateChannel={(request) => {
             const channelId = request.state?.id as string
-            if(channelId && !channelInfoMap.has(channelId) && channelInfoMap.has(UNMATCH_CHANNEL_ID)) {
+            if (channelId && !channelInfoMap.has(channelId) && channelInfoMap.has(UNMATCH_CHANNEL_ID)) {
               const temChannelInfo = channelInfoMap.get(UNMATCH_CHANNEL_ID)
               const channelInfo = {
                 ...temChannelInfo,

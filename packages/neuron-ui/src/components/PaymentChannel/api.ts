@@ -19,18 +19,6 @@ export type ChannelState = {
 //   // state?: wire.State;
 //   myPayloadIndex: 0 | 1;
 // }
-export async function startupChannelServiceRunner(publicKey: string) {
-  const actionRes = await perunServiceAction({
-    type: 'startup',
-    payload: {
-      network: "testnet",
-      publicKey,
-    },
-  })
-  if (!isSuccessResponse(actionRes)) {
-    return []
-  }
-}
 export async function getChannels(publicKey: string, address: string) {
   const actionRes = await perunServiceAction({
     type: 'get',

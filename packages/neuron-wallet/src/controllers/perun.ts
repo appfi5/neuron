@@ -20,6 +20,8 @@ import { parseState } from '../services/perun/tools/tool'
 import * as wire from "../utils/perun-wallet-wrapper/wire"
 // import PerunChannelServiceRunner from '../services/perun/channel-service-runner'
 import { PerunMessageReceiver } from '../services/perun/message-receiver'
+import { getConnection } from '../database/chain/connection'
+import PerunChannelInfoEntity from '../database/chain/entities/perun-channel-info'
 
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
@@ -120,8 +122,57 @@ export default class PerunController {
         return this.getChannels(params.payload)
       case 'restore':
         return this.restoreChannels(params.payload)
+      case 'get-channel-infos':
+        return this.getChannelInfos(params.payload)
+      case 'remove-channel-info':
+        return this.removeChannelInfo(params.payload)
+      case 'add-channel-info':
+        return this.addChannelInfo(params.payload)
       default:
         return Promise.reject(new Error('Invalid perun service action type'))
+    }
+  }
+
+  async getChannelInfos(params: (Perun.ServiceActionParams & { type: "get-channel-infos" })['payload']) {
+    const res = await getConnection().getRepository(PerunChannelInfoEntity).find({
+      where: {
+        meAddress: params.address,
+      }
+    })
+    return {
+      status: ResponseCode.Success,
+      result: res.map(item => item.toModel()),
+    }
+  }
+
+  async removeChannelInfo(params: (Perun.ServiceActionParams & { type: "remove-channel-info" })['payload']) {
+    await getConnection().getRepository(PerunChannelInfoEntity).delete({
+      channelId: params.channelId,
+    })
+    return {
+      status: ResponseCode.Success,
+      result: true,
+    }
+  }
+
+  async addChannelInfo(params: (Perun.ServiceActionParams & { type: "add-channel-info" })['payload']) {
+    const channelInfo = params;
+    // if exist remove it 
+    const db = getConnection().getRepository(PerunChannelInfoEntity)
+    const flag = await db.exist({
+      where: {
+        channelId: channelInfo.channelId,
+      }
+    })
+    if (flag) {
+      await db.delete({
+        channelId: channelInfo.channelId,
+      })
+    }
+    await db.insert(PerunChannelInfoEntity.fromObject(channelInfo))
+    return {
+      status: ResponseCode.Success,
+      result: true,
     }
   }
 
@@ -160,11 +211,6 @@ export default class PerunController {
       message: message,
     }
     PerunRunnerStateSubject.next(this.runnerStatus)
-    // if (!this.context) {
-    //   throw new Error('PerunController: Perun Not Started')
-    // }
-    // this.runnerStatus = { running: false }
-    // logger.info('PerunController: stop-----PerunService-----')
     // todo
     // stop channel-service-runner
     // stop wallet-backend 
