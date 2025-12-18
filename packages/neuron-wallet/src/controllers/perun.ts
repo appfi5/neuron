@@ -22,7 +22,9 @@ import * as wire from "../utils/perun-wallet-wrapper/wire"
 import { PerunMessageReceiver } from '../services/perun/message-receiver'
 import { getConnection } from '../database/chain/connection'
 import PerunChannelInfoEntity from '../database/chain/entities/perun-channel-info'
+// import PerunChannelServiceRunner from '../services/perun/channel-service-runner'
 
+// const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
     return bytes.bytify(add)
@@ -192,10 +194,14 @@ export default class PerunController {
       context
     }
     logger.info('PerunController: start-----PerunService-----')
-    // start wallet-backend
-    await PerunMessageReceiver.getInstance().start()
     // todo 
     // start channel-service-runner
+    // await PerunChannelServiceRunner.getInstance().start(context)
+    // start wallet-backend
+    await PerunMessageReceiver.getInstance().start()
+
+    // await sleep(5000)
+
 
     PerunRunnerStateSubject.next(this.runnerStatus)
 
@@ -213,6 +219,7 @@ export default class PerunController {
     PerunRunnerStateSubject.next(this.runnerStatus)
     // todo
     // stop channel-service-runner
+    // PerunChannelServiceRunner.getInstance().stop();
     // stop wallet-backend 
     PerunMessageReceiver.getInstance().stop();
     return {

@@ -5,6 +5,7 @@ import generateConfigFiles, { ConfigFileOptions } from './configFiles'
 import path from 'path'
 import SettingsService from '../settings'
 import fs from 'fs'
+import PerunController from '../../controllers/perun'
 
 const { app } = env
 const platform = (): string => {
@@ -20,7 +21,9 @@ const platform = (): string => {
   }
 }
 const binaryPath = (): string => {
-  return app.isPackaged ? path.join(path.dirname(app.getAppPath()), '..', './bin') : path.join(__dirname, '../../bin')
+  return app.isPackaged
+    ? path.join(path.dirname(app.getAppPath()), '..', './bin')
+    : path.join(__dirname, '../../../bin')
 }
 const channelServiceRunnerBinary = (): string => {
   const binary = app.isPackaged ? path.resolve(binaryPath(), './channel-service-runner') : path.resolve(binaryPath(), `./${platform()}`, './channel-service-runner')
@@ -57,7 +60,7 @@ export default class PerunChannelServiceRunner {
       await this.stop()
     }
 
-    const { config, contractCellDeps, systemScripts } = generateConfigFiles(opt)
+    const { config } = generateConfigFiles(opt) // , contractCellDeps, systemScripts
 
     const perunFolderPath = SettingsService.getInstance().getPeurnDataFolderPath();
     const pathWithNetwork = path.join(perunFolderPath, opt.network);
@@ -66,34 +69,70 @@ export default class PerunChannelServiceRunner {
     const file_config_path = path.join(pathWithNetwork, 'config.json');
     fs.writeFileSync(file_config_path, JSON.stringify(config, null, 2));
 
-    const file_contractCellDeps_path = path.join(pathWithNetwork, 'contracts_cell_deps.json');
-    fs.writeFileSync(file_contractCellDeps_path, JSON.stringify(contractCellDeps, null, 2));
+    // const file_contractCellDeps_path = path.join(pathWithNetwork, 'contracts_cell_deps.json');
+    // fs.writeFileSync(file_contractCellDeps_path, JSON.stringify(contractCellDeps, null, 2));
 
-    const file_systemScripts_path = path.join(pathWithNetwork, 'system_scripts.json');
-    fs.writeFileSync(file_systemScripts_path, JSON.stringify(systemScripts, null, 2));
-    
+    // const file_systemScripts_path = path.join(pathWithNetwork, 'system_scripts.json');
+    // fs.writeFileSync(file_systemScripts_path, JSON.stringify(systemScripts, null, 2));
+
+
+    console.log(channelServiceRunnerBinary(), file_config_path)
+
     const scrProcess = spawn(channelServiceRunnerBinary(), [
       // --config           config.json
       '--config',
-      `"${file_config_path}"`,
+      `${file_config_path}`,
       // --system_scripts   default_scripts.json
-      '--system_scripts',
-      `"${file_systemScripts_path}"`,
+      // '--system_scripts',
+      // `"${file_systemScripts_path}"`,
       // --migration_data   contracts_cell_deps.json
-      '--migration_data',
-      `"${file_contractCellDeps_path}"`,
+      // '--migration_data',
+      // `"${file_contractCellDeps_path}"`,
     ])
 
-    scrProcess.stderr?.on('data', data => {
-      logger.error('PerunChannelServiceRunner:\t fail:', data.toString())
+    scrProcess?.on('spawn', () => {
+      logger.info(`PerunChannelServiceRunner spawn`)
+      // this.logStream?.write(data)
     })
+
+    scrProcess.stderr.on('data', data => {
+      logger.error(`PerunChannelServiceRunner stderr: ${data}`)
+      // this.logStream?.write(data)
+    })
+
+    scrProcess.stdout.on('data', data => {
+      logger.info(`PerunChannelServiceRunner stdout: ${data}`)
+      // this.logStream?.write(data)
+    })
+
+    scrProcess.on('message', data => {
+      logger.info(`PerunChannelServiceRunner message: ${data}`)
+      // this.logStream?.write(data)
+    })
+
+    scrProcess.on('exit', data => {
+      logger.info(`PerunChannelServiceRunner exit: ${data}`)
+      // this.logStream?.write(data)
+    })
+
 
     scrProcess.on("error", error => {
       logger.error('PerunChannelServiceRunner:\t fail:', error)
+      this.runnerProcess?.kill()
+      this.runnerProcess = undefined
+      PerunController.emiter.emit("perun-service", {
+        runner: "channel-service-runner",
+        type: 'stop',
+        message: error.message
+      })
     })
 
     scrProcess.once("close", () => {
       logger.info('PerunChannelServiceRunner:\t closed')
+      PerunController.emiter.emit("perun-service", {
+        runner: "channel-service-runner",
+        type: 'stop'
+      })
       this.runnerProcess = undefined;
     })
 
