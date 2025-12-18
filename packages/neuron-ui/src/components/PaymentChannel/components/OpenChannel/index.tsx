@@ -36,10 +36,10 @@ export default function PerunOpenChannel(props: PerunOpenChannelProps) {
   } = useGlobalState()
 
   const [formData, setFormData] = useState({
-    myAmount: 125,
-    peerAddress: 'ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqvujnwcyyexhcsddzu74yks6ytchq26y0svu4675',
-    peerPubKey: '0x02372431f7ce5e18e100e56d6d8e74145ec00ad59878887a353aca8ca52e64119c',
-    peerAmount: 123,
+    myAmount: 0,
+    peerAddress: '',
+    peerPubKey: '',
+    peerAmount: 0,
   })
 
   const [formErrors, setFormErrors] = useState({

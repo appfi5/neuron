@@ -46,8 +46,8 @@ const menuItems = [
     children: [
       { name: 'navbar.special-assets', key: RoutePath.SpecialAssets, url: RoutePath.SpecialAssets },
       { name: 'navbar.s-udt', key: RoutePath.SUDTAccountList, url: RoutePath.SUDTAccountList },
-      { name: 'navbar.payment-channel', key: RoutePath.PaymentChannel, url: RoutePath.PaymentChannel },
-      { name: 'navbar.perun', key: RoutePath.Perun, url: RoutePath.Perun },
+      { name: 'navbar.perun', key: RoutePath.PaymentChannel, url: RoutePath.PaymentChannel },
+      // { name: 'navbar.perun', key: RoutePath.Perun, url: RoutePath.Perun },
     ],
   },
 ]
