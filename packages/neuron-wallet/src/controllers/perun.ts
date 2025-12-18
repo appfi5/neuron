@@ -25,6 +25,7 @@ import PerunChannelInfoEntity from '../database/chain/entities/perun-channel-inf
 // import PerunChannelServiceRunner from '../services/perun/channel-service-runner'
 
 // const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 const defaultAddressEncoder: AddressEncoder = (add: Uint8Array | string) => {
   if (typeof add === 'string') {
     return bytes.bytify(add)
@@ -53,7 +54,6 @@ export default class PerunController {
   public static getInstance() {
     // logger.info('PerunController: getInstance-----PerunController-----')
     if (!PerunController.instance) {
-      console.log("create instance?")
       PerunController.instance = new PerunController()
       PerunController.serviceClient = PerunController.mkClient()
     }
@@ -200,8 +200,7 @@ export default class PerunController {
     // start wallet-backend
     await PerunMessageReceiver.getInstance().start()
 
-    // await sleep(5000)
-
+    // await sleep(3000)
 
     PerunRunnerStateSubject.next(this.runnerStatus)
 

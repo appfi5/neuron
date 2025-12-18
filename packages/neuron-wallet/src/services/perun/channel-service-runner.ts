@@ -110,10 +110,10 @@ export default class PerunChannelServiceRunner {
       // this.logStream?.write(data)
     })
 
-    scrProcess.on('exit', data => {
-      logger.info(`PerunChannelServiceRunner exit: ${data}`)
-      // this.logStream?.write(data)
-    })
+    // scrProcess.on('exit', data => {
+    //   logger.info(`PerunChannelServiceRunner exit: ${data}`)
+    //   // this.logStream?.write(data)
+    // })
 
 
     scrProcess.on("error", error => {
@@ -136,10 +136,13 @@ export default class PerunChannelServiceRunner {
       this.runnerProcess = undefined;
     })
 
+    this.runnerProcess = scrProcess;
+
     return true
   }
 
   async stop() {
+    // logger.info('PerunChannelServiceRunner:\t going to stop')
     this.runnerProcess?.kill()
     this.runnerProcess = undefined
   }
